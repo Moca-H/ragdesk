@@ -57,6 +57,61 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+/* Shared field chrome — kill native OS select look */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.7rem;
+  padding-right: 2.1rem;
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+select.field--light,
+.panel__actions select,
+.form-grid select,
+.composer select {
+  border: 1px solid var(--rule);
+  background-color: #fffdf8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75L6 6.25L10.5 1.75' stroke='%238b6a3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+select.field--light:hover,
+.panel__actions select:hover,
+.form-grid select:hover {
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--rule));
+}
+
+select.field--light:focus,
+.panel__actions select:focus,
+.form-grid select:focus,
+.composer input:focus,
+.form-grid input:focus {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18);
+}
+
+select.field--light option,
+.panel__actions select option,
+.form-grid select option {
+  background: #fffdf8;
+  color: var(--ink);
+}
+
 ::selection {
   background: var(--brass-soft);
   color: var(--ink);
@@ -133,31 +188,62 @@ select:focus-visible {
 
 .rail__kb {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
 .rail__kb label {
   display: grid;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .rail__kb small {
   color: var(--rail-muted);
   font-size: 0.78rem;
+  letter-spacing: 0.02em;
 }
 
 .rail__kb select {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(212, 179, 122, 0.28);
+  background-color: rgba(0, 0, 0, 0.38);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75L6 6.25L10.5 1.75' stroke='%23d4b37a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   color: var(--rail-ink);
   border-radius: var(--radius);
-  padding: 0.55rem 0.65rem;
+  padding: 0.62rem 2.1rem 0.62rem 0.75rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.rail__kb select:hover {
+  border-color: rgba(212, 179, 122, 0.55);
+  background-color: rgba(0, 0, 0, 0.48);
+}
+
+.rail__kb select:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.28);
+}
+
+.rail__kb select option {
+  background: #221f1c;
+  color: var(--rail-ink);
 }
 
 .rail__kb-add {
   color: var(--rail-ink) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.rail__kb-add:hover {
+  color: var(--brass) !important;
+  border-color: rgba(212, 179, 122, 0.45) !important;
+  background: rgba(176, 141, 87, 0.1) !important;
 }
 
 .rail__nav {
@@ -367,11 +453,14 @@ select:focus-visible {
 }
 
 .panel__actions select {
-  border: 1px solid var(--rule);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: var(--radius);
-  padding: 0.45rem 0.7rem;
+  min-height: 2.45rem;
+  padding: 0.5rem 2.1rem 0.5rem 0.8rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.panel__actions .btn {
+  min-height: 2.45rem;
 }
 
 .dropzone {
@@ -502,13 +591,20 @@ select:focus-visible {
 }
 
 .btn--ghost {
-  background: transparent;
+  background: color-mix(in srgb, var(--surface) 70%, white);
   color: var(--muted);
 }
 
 .btn--ghost:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--brass) 45%, var(--rule));
+  background: var(--brass-soft);
+}
+
+.btn--danger:hover {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 35%, var(--rule));
+  background: #f8e6e3;
 }
 
 .btn.is-disabled,
@@ -710,12 +806,19 @@ select:focus-visible {
   color: var(--ink);
   border-radius: var(--radius);
   padding: 0.72rem 0.85rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.composer input:focus,
-.form-grid input:focus,
-.form-grid select:focus {
-  border-color: var(--brass);
+.form-grid select {
+  padding-right: 2.1rem;
+}
+
+.composer .btn {
+  min-height: 2.85rem;
+  padding-inline: 1.15rem;
 }
 
 .form-grid {

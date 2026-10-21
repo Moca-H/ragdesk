@@ -583,7 +583,7 @@ function ChatPanel({
           </button>
           <button
             type="button"
-            className="btn btn--ghost"
+            className="btn btn--ghost btn--danger"
             onClick={() => {
               setMessages([])
               setActiveCitation(null)
