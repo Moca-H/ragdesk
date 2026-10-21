@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "ragdesk-mcp"
 version = "0.1.2"
 description = "MCP server for ragdesk - list KBs, ingest text, and ask your local RAG API"

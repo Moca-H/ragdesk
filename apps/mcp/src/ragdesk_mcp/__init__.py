@@ -1,3 +1,3 @@
-﻿"""ragdesk MCP server package."""
+"""ragdesk MCP server package."""
 
 __version__ = "0.1.2"
