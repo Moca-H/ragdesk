@@ -337,6 +337,33 @@ select:focus-visible {
   align-items: center;
 }
 
+.probe {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+}
+
+.probe--ok {
+  background: #e8f3e6;
+  border-color: #9cbc94;
+}
+
+.probe--bad {
+  background: #f8e6e3;
+  border-color: #d5a59e;
+}
+
+.probe strong {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+}
+
+.probe span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .panel__head h2 {
   margin: 0 0 0.35rem;
   font-family: 'Bricolage Grotesque', system-ui, sans-serif;

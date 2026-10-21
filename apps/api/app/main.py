@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.paths import ensure_data_dirs
-from app.routers import chat, documents, health, settings
+from app.routers import chat, documents, health, provider, settings
 
 ensure_data_dirs()
 
@@ -23,5 +23,6 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(settings.router)
+app.include_router(provider.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
