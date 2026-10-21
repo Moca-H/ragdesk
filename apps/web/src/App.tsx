@@ -35,13 +35,16 @@ export default function App() {
   }, [])
 
   return (
-    <div className="app">
-      <header className="top">
-        <div>
-          <p className="eyebrow">self-hosted · RAG</p>
-          <h1>ragdesk</h1>
+    <div className="shell">
+      <aside className="rail">
+        <div className="rail__brand">
+          <div className="rail__mark" aria-hidden="true" />
+          <h1>
+            rag<span>desk</span>
+          </h1>
+          <p>把文档放进抽屉，再当面问它。</p>
         </div>
-        <nav className="tabs" aria-label="Primary">
+        <nav className="rail__nav" aria-label="主导航">
           {(
             [
               ['library', '资料库'],
@@ -52,36 +55,55 @@ export default function App() {
             <button
               key={id}
               type="button"
-              className={tab === id ? 'tab is-active' : 'tab'}
+              className={tab === id ? 'rail__link is-active' : 'rail__link'}
               onClick={() => setTab(id)}
             >
+              <span className="rail__dot" aria-hidden="true" />
               {label}
             </button>
           ))}
         </nav>
-      </header>
+        <div className="rail__meta">
+          <div>
+            <small>已入库</small>
+            <strong>{docs.length}</strong>
+          </div>
+          <div>
+            <small>模型接口</small>
+            <strong>{settings?.provider ?? '…'}</strong>
+          </div>
+        </div>
+      </aside>
 
-      {status ? <p className="banner">{status}</p> : null}
+      <div className="stage">
+        {status ? (
+          <p className="banner" role="status">
+            {status}
+          </p>
+        ) : null}
 
-      {tab === 'library' ? (
-        <LibraryPanel
-          docs={docs}
-          busy={busy}
-          setBusy={setBusy}
-          setStatus={setStatus}
-          onChange={() => void refresh()}
-        />
-      ) : null}
-      {tab === 'chat' ? (
-        <ChatPanel setStatus={setStatus} provider={settings?.provider} />
-      ) : null}
-      {tab === 'settings' ? (
-        <SettingsPanel
-          settings={settings}
-          setSettings={setSettings}
-          setStatus={setStatus}
-        />
-      ) : null}
+        <main className="stage__main" key={tab}>
+          {tab === 'library' ? (
+            <LibraryPanel
+              docs={docs}
+              busy={busy}
+              setBusy={setBusy}
+              setStatus={setStatus}
+              onChange={() => void refresh()}
+            />
+          ) : null}
+          {tab === 'chat' ? (
+            <ChatPanel setStatus={setStatus} provider={settings?.provider} />
+          ) : null}
+          {tab === 'settings' ? (
+            <SettingsPanel
+              settings={settings}
+              setSettings={setSettings}
+              setStatus={setStatus}
+            />
+          ) : null}
+        </main>
+      </div>
     </div>
   )
 }
@@ -138,7 +160,7 @@ function LibraryPanel({
       <div className="panel__head">
         <div>
           <h2>资料库</h2>
-          <p>支持 .md / .txt / .pdf。上传后自动切分并写入向量库。</p>
+          <p>放入 Markdown、TXT 或 PDF，系统会切段并建立检索索引。</p>
         </div>
         <label className={`btn btn--primary ${busy ? 'is-disabled' : ''}`}>
           {busy ? '处理中…' : '上传文档'}
@@ -157,22 +179,26 @@ function LibraryPanel({
       </div>
 
       {docs.length === 0 ? (
-        <div className="empty">还没有文档。先上传一份 Markdown 试试。</div>
+        <div className="empty">
+          <strong>抽屉还是空的</strong>
+          <p>上传一份说明文档，再去对话页提问。</p>
+        </div>
       ) : (
         <ul className="doc-list">
           {docs.map((d) => (
             <li key={d.id} className="doc-item">
-              <div>
+              <div className="doc-item__tab" aria-hidden="true" />
+              <div className="doc-item__body">
                 <strong>{d.filename}</strong>
                 <span>
                   {d.status === 'ready'
-                    ? `${d.chunk_count} chunks · ${(d.size / 1024).toFixed(1)} KB`
-                    : d.error || 'error'}
+                    ? `${d.chunk_count} 段 / ${(d.size / 1024).toFixed(1)} KB`
+                    : d.error || '入库失败'}
                 </span>
               </div>
               <button
                 type="button"
-                className="btn btn--danger"
+                className="btn btn--ghost"
                 disabled={busy}
                 onClick={() => void onDelete(d.id, d.filename)}
               >
@@ -260,32 +286,38 @@ function ChatPanel({
         <div>
           <h2>对话</h2>
           <p>
-            当前 Provider：<strong>{provider ?? '…'}</strong>
-            。回答会附带检索引用。
+            正在使用 <strong>{provider ?? '…'}</strong>
+            ，回答会标出引用片段。
           </p>
         </div>
         <button
           type="button"
-          className="btn"
+          className="btn btn--ghost"
           onClick={() => {
             setMessages([])
             setActiveCitation(null)
           }}
         >
-          清空
+          清空对话
         </button>
       </div>
 
       <div className="chat__thread">
         {messages.length === 0 ? (
-          <div className="empty">问一个关于已上传文档的问题。</div>
+          <div className="empty">
+            <strong>从资料里找答案</strong>
+            <p>例如：这份文档里怎么启动服务？</p>
+          </div>
         ) : (
           messages.map((m, idx) => (
             <article
               key={`${m.role}-${idx}`}
               className={m.role === 'user' ? 'bubble bubble--user' : 'bubble'}
             >
-              <p>{m.content || (streaming && idx === messages.length - 1 ? '…' : '')}</p>
+              <p>
+                {m.content ||
+                  (streaming && idx === messages.length - 1 ? '正在生成…' : '')}
+              </p>
               {m.citations && m.citations.length > 0 ? (
                 <div className="cites">
                   {m.citations.map((c, i) => (
@@ -295,7 +327,7 @@ function ChatPanel({
                       className="cite"
                       onClick={() => setActiveCitation(c)}
                     >
-                      来源 {i + 1}: {c.filename}
+                      {c.filename}
                     </button>
                   ))}
                 </div>
@@ -309,7 +341,11 @@ function ChatPanel({
         <aside className="cite-panel">
           <div className="cite-panel__head">
             <strong>{activeCitation.filename}</strong>
-            <button type="button" className="btn" onClick={() => setActiveCitation(null)}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setActiveCitation(null)}
+            >
               关闭
             </button>
           </div>
@@ -327,7 +363,7 @@ function ChatPanel({
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="基于资料库提问…"
+          placeholder="针对已入库文档提问"
           disabled={streaming}
         />
         <button type="submit" className="btn btn--primary" disabled={!canSend}>
@@ -392,7 +428,9 @@ function SettingsPanel({
       <div className="panel__head">
         <div>
           <h2>设置</h2>
-          <p>可切换 Mock / OpenAI 兼容 API / Ollama。API Key 只保存在本机 data/config.json。</p>
+          <p>
+            切换 Mock、OpenAI 兼容接口或 Ollama。密钥只保存在本机，不会上传。
+          </p>
         </div>
         <button
           type="button"
@@ -400,7 +438,7 @@ function SettingsPanel({
           disabled={saving || !settings}
           onClick={() => void onSave()}
         >
-          {saving ? '保存中…' : '保存'}
+          {saving ? '保存中…' : '保存设置'}
         </button>
       </div>
 
