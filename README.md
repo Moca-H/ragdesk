@@ -72,12 +72,34 @@ docker compose up --build
 
 请求头 `X-Ragdesk-KB` 指定知识库（默认 `default`）。
 
+## MCP（给 Cursor / Agent 用）
+
+旁路包 [`ragdesk-mcp`](apps/mcp)，通过 HTTP 调用本机 API，不改动核心业务代码。
+
+```json
+{
+  "mcpServers": {
+    "ragdesk": {
+      "command": "uvx",
+      "args": ["ragdesk-mcp"],
+      "env": {
+        "RAGDESK_API_BASE": "http://127.0.0.1:8000",
+        "RAGDESK_KB": "default"
+      }
+    }
+  }
+}
+```
+
+详见 [apps/mcp/README.md](apps/mcp/README.md)。发布到 PyPI：打标签 `ragdesk-mcp-v0.1.0`（需仓库 Secret `PYPI_API_TOKEN`）。
+
 ## 目录
 
 ```
 apps/
   api/   FastAPI + Chroma + Providers
   web/   React 工作台
+  mcp/   MCP server（PyPI: ragdesk-mcp）
 scripts/dev.ps1
 docker-compose.yml
 ```
