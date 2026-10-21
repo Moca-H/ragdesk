@@ -22,6 +22,7 @@ import {
   type ProviderStatus,
   type Settings,
 } from './api'
+import { DeskConfirm } from './DeskConfirm'
 import { DeskSelect } from './DeskSelect'
 import './DeskModal.css'
 
@@ -488,42 +489,19 @@ function LibraryPanel({
         </ul>
       )}
 
-      <Modal
-        className="desk-modal"
+      <DeskConfirm
         opened={confirm != null}
-        onClose={() => setConfirm(null)}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => void runConfirmed()}
         title={confirm?.kind === 'delete' ? '删除文档' : '重建索引'}
-        centered
-        radius="md"
-        overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
-        transitionProps={{ transition: 'pop', duration: 160 }}
-      >
-        <Text size="sm">
-          {confirm?.kind === 'delete'
+        message={
+          confirm?.kind === 'delete'
             ? `确定删除「${confirm.name}」？此操作不可撤销。`
-            : '按当前 Provider / Embedding 重建全部索引？'}
-        </Text>
-        <div className="desk-modal__actions">
-          <button
-            type="button"
-            className="desk-modal__btn"
-            onClick={() => setConfirm(null)}
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            className={
-              confirm?.kind === 'delete'
-                ? 'desk-modal__btn desk-modal__btn--danger'
-                : 'desk-modal__btn desk-modal__btn--primary'
-            }
-            onClick={() => void runConfirmed()}
-          >
-            {confirm?.kind === 'delete' ? '删除' : '开始重建'}
-          </button>
-        </div>
-      </Modal>
+            : '按当前 Provider / Embedding 重建全部索引？'
+        }
+        confirmLabel={confirm?.kind === 'delete' ? '删除' : '开始重建'}
+        danger={confirm?.kind === 'delete'}
+      />
     </section>
   )
 }
@@ -550,6 +528,7 @@ function ChatPanel({
   const [mode, setMode] = useState<'rag' | 'agent'>('rag')
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null)
   const [stage, setStage] = useState('')
+  const [clearConfirm, setClearConfirm] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const lastUserRef = useRef('')
 
@@ -706,16 +685,29 @@ function ChatPanel({
           <button
             type="button"
             className="btn btn--ghost btn--danger"
-            onClick={() => {
-              setMessages([])
-              setActiveCitation(null)
-              localStorage.removeItem(chatHistoryKey())
-            }}
+            disabled={streaming || messages.length === 0}
+            onClick={() => setClearConfirm(true)}
           >
             清空对话
           </button>
         </div>
       </div>
+
+      <DeskConfirm
+        opened={clearConfirm}
+        onCancel={() => setClearConfirm(false)}
+        onConfirm={() => {
+          setMessages([])
+          setActiveCitation(null)
+          localStorage.removeItem(chatHistoryKey())
+          setClearConfirm(false)
+          setStatus('已清空当前对话')
+        }}
+        title="清空对话"
+        message="清空后将删除本知识库下的本地对话记录，无法撤销。"
+        confirmLabel="清空"
+        danger
+      />
 
       <div className="chat__thread">
         {messages.length === 0 ? (
