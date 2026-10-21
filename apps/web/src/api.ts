@@ -85,6 +85,19 @@ export async function deleteDocument(id: string): Promise<void> {
   if (!res.ok) throw new Error(await readError(res))
 }
 
+export type ReindexResult = {
+  total: number
+  rebuilt: number
+  failed: number
+  documents: DocumentInfo[]
+}
+
+export async function reindexDocuments(): Promise<ReindexResult> {
+  const res = await fetch('/api/documents/reindex', { method: 'POST' })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
 export async function streamChat(
   messages: { role: string; content: string }[],
   topK: number,

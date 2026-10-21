@@ -3,6 +3,7 @@ from .schemas import (
     ChatRequest,
     Citation,
     DocumentInfo,
+    ReindexResult,
     SettingsPublic,
     SettingsUpdate,
 )
@@ -12,6 +13,7 @@ __all__ = [
     "ChatRequest",
     "Citation",
     "DocumentInfo",
+    "ReindexResult",
     "SettingsPublic",
     "SettingsUpdate",
 ]

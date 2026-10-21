@@ -8,7 +8,11 @@ from pypdf import PdfReader
 from app.paths import UPLOADS_DIR, ensure_data_dirs
 from app.services import docs_meta
 from app.services.providers import get_provider
-from app.services.vector_store import delete_document_chunks, get_collection
+from app.services.vector_store import (
+    delete_document_chunks,
+    get_collection,
+    reset_collection,
+)
 
 
 def _read_text(path: Path) -> str:
@@ -22,6 +26,40 @@ def _read_text(path: Path) -> str:
             parts.append(page.extract_text() or "")
         return "\n".join(parts).strip()
     raise ValueError(f"Unsupported file type: {suffix}")
+
+
+async def _index_file(doc_id: str, filename: str, path: Path) -> tuple[int, str | None]:
+    text = _read_text(path)
+    if not text.strip():
+        raise ValueError("Empty document content after parsing")
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=120,
+    )
+    chunks = splitter.split_text(text)
+    if not chunks:
+        raise ValueError("No chunks produced")
+
+    provider = get_provider()
+    embeddings = await provider.embed(chunks)
+    collection = get_collection()
+    ids = [f"{doc_id}:{i}" for i in range(len(chunks))]
+    metadatas = [
+        {
+            "document_id": doc_id,
+            "filename": filename,
+            "chunk_index": i,
+        }
+        for i in range(len(chunks))
+    ]
+    collection.add(
+        ids=ids,
+        documents=chunks,
+        embeddings=embeddings,
+        metadatas=metadatas,
+    )
+    return len(chunks), None
 
 
 async def ingest_upload(filename: str, content: bytes) -> dict:
@@ -43,47 +81,61 @@ async def ingest_upload(filename: str, content: bytes) -> dict:
     }
 
     try:
-        text = _read_text(dest)
-        if not text.strip():
-            raise ValueError("Empty document content after parsing")
-
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,
-            chunk_overlap=120,
-        )
-        chunks = splitter.split_text(text)
-        if not chunks:
-            raise ValueError("No chunks produced")
-
-        provider = get_provider()
-        embeddings = await provider.embed(chunks)
-        collection = get_collection()
-        ids = [f"{doc_id}:{i}" for i in range(len(chunks))]
-        metadatas = [
-            {
-                "document_id": doc_id,
-                "filename": safe_name,
-                "chunk_index": i,
-            }
-            for i in range(len(chunks))
-        ]
-        collection.add(
-            ids=ids,
-            documents=chunks,
-            embeddings=embeddings,
-            metadatas=metadatas,
-        )
-        meta["chunk_count"] = len(chunks)
+        chunk_count, _ = await _index_file(doc_id, safe_name, dest)
+        meta["chunk_count"] = chunk_count
         meta["status"] = "ready"
+        meta["error"] = None
     except Exception as exc:  # noqa: BLE001
         meta["status"] = "error"
         meta["error"] = str(exc)
-        if dest.exists():
-            # keep file for debugging; still record error
-            pass
+        meta["chunk_count"] = 0
 
     docs_meta.upsert_doc(meta)
     return meta
+
+
+async def reindex_all() -> dict:
+    """Clear vector store and rebuild embeddings for every stored document."""
+    ensure_data_dirs()
+    docs = docs_meta.load_docs()
+    reset_collection()
+
+    rebuilt = 0
+    failed = 0
+    updated: list[dict] = []
+
+    for doc in docs:
+        path = Path(doc.get("path") or "")
+        next_doc = dict(doc)
+        if not path.exists():
+            next_doc["status"] = "error"
+            next_doc["error"] = "Source file missing on disk"
+            next_doc["chunk_count"] = 0
+            failed += 1
+            updated.append(next_doc)
+            continue
+        try:
+            chunk_count, _ = await _index_file(
+                next_doc["id"], next_doc["filename"], path
+            )
+            next_doc["chunk_count"] = chunk_count
+            next_doc["status"] = "ready"
+            next_doc["error"] = None
+            rebuilt += 1
+        except Exception as exc:  # noqa: BLE001
+            next_doc["status"] = "error"
+            next_doc["error"] = str(exc)
+            next_doc["chunk_count"] = 0
+            failed += 1
+        updated.append(next_doc)
+
+    docs_meta.save_docs(updated)
+    return {
+        "total": len(docs),
+        "rebuilt": rebuilt,
+        "failed": failed,
+        "documents": updated,
+    }
 
 
 async def delete_document(doc_id: str) -> bool:
