@@ -511,9 +511,11 @@ select:focus-visible {
   border-color: color-mix(in srgb, var(--danger) 35%, var(--rule));
 }
 
-.btn.is-disabled {
-  opacity: 0.55;
+.btn.is-disabled,
+.btn:disabled {
+  opacity: 0.45;
   pointer-events: none;
+  cursor: not-allowed;
 }
 
 .empty {

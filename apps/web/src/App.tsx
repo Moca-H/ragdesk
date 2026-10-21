@@ -564,14 +564,15 @@ function ChatPanel({
             <option value="rag">直接检索</option>
             <option value="agent">Agent（先改写再检索）</option>
           </select>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={!streaming}
-            onClick={() => abortRef.current?.abort()}
-          >
-            停止
-          </button>
+          {streaming ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => abortRef.current?.abort()}
+            >
+              停止
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn btn--ghost"
