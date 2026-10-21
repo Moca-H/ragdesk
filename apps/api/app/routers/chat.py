@@ -10,7 +10,9 @@ router = APIRouter(tags=["chat"])
 @router.post("/api/chat")
 async def chat(body: ChatRequest) -> StreamingResponse:
     async def event_gen():
-        async for payload in stream_rag_answer(body.messages, top_k=body.top_k):
+        async for payload in stream_rag_answer(
+            body.messages, top_k=body.top_k, mode=body.mode
+        ):
             yield f"data: {payload}\n\n"
 
     return StreamingResponse(

@@ -5,7 +5,8 @@ from copy import deepcopy
 from dotenv import load_dotenv
 
 from app.models.schemas import SettingsPublic, SettingsUpdate
-from app.paths import CONFIG_PATH, DOCS_META_PATH, ensure_data_dirs
+from app.paths import CONFIG_PATH, ensure_data_dirs
+from app.services import docs_meta
 
 load_dotenv()
 
@@ -67,11 +68,8 @@ def update_settings(patch: SettingsUpdate) -> dict:
 
 
 def _has_documents() -> bool:
-    if not DOCS_META_PATH.exists():
-        return False
     try:
-        docs = json.loads(DOCS_META_PATH.read_text(encoding="utf-8"))
-        return bool(docs)
+        return bool(docs_meta.load_docs())
     except Exception:
         return False
 

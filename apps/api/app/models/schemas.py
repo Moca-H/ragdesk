@@ -26,7 +26,7 @@ class DocumentInfo(BaseModel):
     id: str
     filename: str
     size: int
-    status: Literal["ready", "error"]
+    status: Literal["ready", "error", "processing"]
     chunk_count: int = 0
     error: str | None = None
     created_at: str
@@ -47,6 +47,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1)
     top_k: int = Field(default=4, ge=1, le=12)
+    mode: Literal["rag", "agent"] = "rag"
 
 
 class Citation(BaseModel):
@@ -54,3 +55,4 @@ class Citation(BaseModel):
     filename: str
     excerpt: str
     score: float | None = None
+    chunk_index: int | None = None

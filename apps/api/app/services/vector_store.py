@@ -4,9 +4,9 @@ from typing import Any
 
 import chromadb
 
-from app.paths import CHROMA_DIR, ensure_data_dirs
+from app.paths import chroma_dir, ensure_data_dirs
+from app.services.kb_context import get_kb_id
 
-COLLECTION_NAME = "ragdesk_docs"
 _client: Any = None
 
 
@@ -14,13 +14,18 @@ def get_client() -> Any:
     global _client
     ensure_data_dirs()
     if _client is None:
-        _client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+        _client = chromadb.PersistentClient(path=str(chroma_dir()))
     return _client
+
+
+def collection_name(kb_id: str | None = None) -> str:
+    kid = (kb_id or get_kb_id()).replace("-", "_")
+    return f"ragdesk_{kid}"
 
 
 def get_collection() -> Any:
     return get_client().get_or_create_collection(
-        name=COLLECTION_NAME,
+        name=collection_name(),
         metadata={"hnsw:space": "cosine"},
     )
 
@@ -35,8 +40,9 @@ def delete_document_chunks(document_id: str) -> None:
 
 def reset_collection() -> None:
     client = get_client()
+    name = collection_name()
     try:
-        client.delete_collection(COLLECTION_NAME)
+        client.delete_collection(name)
     except Exception:
         pass
     get_collection()
