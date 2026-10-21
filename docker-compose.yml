@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+    volumes:
+      - ragdesk-data:/app/data
+    environment:
+      RAGDESK_PROVIDER: mock
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  ragdesk-data:
