@@ -1,5 +1,12 @@
 # Start API + Web together. Usage: .\scripts\dev.ps1
+# Keep console messages ASCII-safe: Windows PowerShell often misreads UTF-8 without BOM.
 $ErrorActionPreference = 'Stop'
+try {
+  [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+  $OutputEncoding = [Console]::OutputEncoding
+} catch {
+  # ignore hosts that disallow console encoding changes
+}
 $Root = Split-Path $PSScriptRoot -Parent
 $ApiDir = Join-Path $Root 'apps\api'
 $WebDir = Join-Path $Root 'apps\web'
@@ -28,7 +35,7 @@ function Ensure-Web {
   }
 }
 
-Write-Host 'ragdesk — preparing...'
+Write-Host 'ragdesk - preparing...'
 Ensure-Api
 Ensure-Web
 

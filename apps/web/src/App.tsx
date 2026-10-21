@@ -21,6 +21,7 @@ import {
   type ProviderStatus,
   type Settings,
 } from './api'
+import { DeskSelect } from './DeskSelect'
 
 type Tab = 'library' | 'chat' | 'eval' | 'settings'
 
@@ -117,22 +118,17 @@ export default function App() {
           <p>把文档放进抽屉，再当面问它。</p>
         </div>
         <div className="rail__kb">
-          <label>
-            <small>知识库</small>
-            <select
-              value={kbId}
-              onChange={(e) => {
-                setActiveKbId(e.target.value)
-                setKbId(e.target.value)
-              }}
-            >
-              {kbs.map((kb) => (
-                <option key={kb.id} value={kb.id}>
-                  {kb.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <DeskSelect
+            tone="dark"
+            label="知识库"
+            aria-label="选择知识库"
+            value={kbId}
+            data={kbs.map((kb) => ({ value: kb.id, label: kb.name }))}
+            onChange={(id) => {
+              setActiveKbId(id)
+              setKbId(id)
+            }}
+          />
           <button
             type="button"
             className="btn btn--ghost rail__kb-add"
@@ -556,22 +552,27 @@ function ChatPanel({
           </p>
         </div>
         <div className="panel__actions">
-          <select
+          <DeskSelect
+            tone="light"
+            aria-label="检索模式"
+            className="desk-select--inline"
             value={mode}
-            onChange={(e) => setMode(e.target.value as 'rag' | 'agent')}
             disabled={streaming}
-          >
-            <option value="rag">直接检索</option>
-            <option value="agent">Agent（先改写再检索）</option>
-          </select>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={!streaming}
-            onClick={() => abortRef.current?.abort()}
-          >
-            停止
-          </button>
+            data={[
+              { value: 'rag', label: '直接检索' },
+              { value: 'agent', label: 'Agent（先改写再检索）' },
+            ]}
+            onChange={(v) => setMode(v as 'rag' | 'agent')}
+          />
+          {streaming ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => abortRef.current?.abort()}
+            >
+              停止
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn btn--ghost"
@@ -582,7 +583,7 @@ function ChatPanel({
           </button>
           <button
             type="button"
-            className="btn btn--ghost"
+            className="btn btn--ghost btn--danger"
             onClick={() => {
               setMessages([])
               setActiveCitation(null)
@@ -884,16 +885,22 @@ function SettingsPanel({
       ) : null}
 
       <div className="form-grid">
-        <label>
-          <span>Provider</span>
-          <select
+        <label className="desk-select-field">
+          <DeskSelect
+            tone="light"
+            label="Provider"
+            aria-label="Provider"
             value={provider}
-            onChange={(e) => setProvider(e.target.value as ProviderName)}
-          >
-            <option value="mock">mock（本地演示）</option>
-            <option value="openai_compat">openai_compat（OpenAI / DeepSeek 等）</option>
-            <option value="ollama">ollama</option>
-          </select>
+            data={[
+              { value: 'mock', label: 'mock（本地演示）' },
+              {
+                value: 'openai_compat',
+                label: 'openai_compat（OpenAI / DeepSeek 等）',
+              },
+              { value: 'ollama', label: 'ollama' },
+            ]}
+            onChange={(v) => setProvider(v as ProviderName)}
+          />
         </label>
         <label>
           <span>Base URL</span>

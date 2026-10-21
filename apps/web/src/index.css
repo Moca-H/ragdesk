@@ -57,6 +57,61 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+/* Shared field chrome — kill native OS select look */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.7rem;
+  padding-right: 2.1rem;
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+select.field--light,
+.panel__actions select,
+.form-grid select,
+.composer select {
+  border: 1px solid var(--rule);
+  background-color: #fffdf8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75L6 6.25L10.5 1.75' stroke='%238b6a3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+select.field--light:hover,
+.panel__actions select:hover,
+.form-grid select:hover {
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--rule));
+}
+
+select.field--light:focus,
+.panel__actions select:focus,
+.form-grid select:focus,
+.composer input:focus,
+.form-grid input:focus {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18);
+}
+
+select.field--light option,
+.panel__actions select option,
+.form-grid select option {
+  background: #fffdf8;
+  color: var(--ink);
+}
+
 ::selection {
   background: var(--brass-soft);
   color: var(--ink);
@@ -71,6 +126,7 @@ select:focus-visible {
 
 .rail {
   position: relative;
+  z-index: 5;
   background:
     linear-gradient(180deg, #262320 0%, var(--rail) 40%, #151311 100%);
   color: var(--rail-ink);
@@ -133,31 +189,150 @@ select:focus-visible {
 
 .rail__kb {
   display: grid;
-  gap: 0.45rem;
-}
-
-.rail__kb label {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.rail__kb small {
-  color: var(--rail-muted);
-  font-size: 0.78rem;
-}
-
-.rail__kb select {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--rail-ink);
-  border-radius: var(--radius);
-  padding: 0.55rem 0.65rem;
+  gap: 0.55rem;
 }
 
 .rail__kb-add {
   color: var(--rail-ink) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.rail__kb-add:hover {
+  color: var(--brass) !important;
+  border-color: rgba(212, 179, 122, 0.45) !important;
+  background: rgba(176, 141, 87, 0.1) !important;
+}
+
+/* Mantine Select — themed to desk UI */
+.desk-select__root {
+  width: 100%;
+}
+
+.desk-select--inline.desk-select__root,
+.desk-select--inline {
+  width: auto;
+  min-width: 11rem;
+}
+
+.desk-select__label {
+  margin-bottom: 0.35rem;
+}
+
+.desk-select--dark .desk-select__label {
+  color: var(--rail-muted) !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+}
+
+.desk-select--light .desk-select__label {
+  color: var(--muted) !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+}
+
+.desk-select__input {
+  font-weight: 600 !important;
+  min-height: 2.45rem !important;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease !important;
+}
+
+.desk-select--dark .desk-select__input {
+  background: rgba(0, 0, 0, 0.38) !important;
+  border: 1px solid rgba(212, 179, 122, 0.28) !important;
+  color: var(--rail-ink) !important;
+}
+
+.desk-select--dark .desk-select__input:hover {
+  border-color: rgba(212, 179, 122, 0.55) !important;
+  background: rgba(0, 0, 0, 0.48) !important;
+}
+
+.desk-select--dark .desk-select__input:focus {
+  border-color: var(--brass) !important;
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.28) !important;
+}
+
+.desk-select--dark .desk-select__section {
+  color: #d4b37a !important;
+}
+
+.desk-select--light .desk-select__input {
+  background: #fffdf8 !important;
+  border: 1px solid var(--rule) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset !important;
+}
+
+.desk-select--light .desk-select__input:hover {
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--rule)) !important;
+}
+
+.desk-select--light .desk-select__input:focus {
+  border-color: var(--brass) !important;
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18) !important;
+}
+
+.desk-select--light .desk-select__section {
+  color: var(--brass-deep) !important;
+}
+
+.desk-select__dropdown {
+  padding: 0.35rem !important;
+  border-radius: calc(var(--radius) + 2px) !important;
+}
+
+.desk-select__dropdown--dark {
+  background: linear-gradient(180deg, #2a2622 0%, #1c1a18 100%) !important;
+  border: 1px solid rgba(212, 179, 122, 0.28) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45) !important;
+}
+
+.desk-select__dropdown--light {
+  background: linear-gradient(180deg, #fffdf8 0%, #f7f3eb 100%) !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: 0 14px 32px rgba(40, 32, 22, 0.14) !important;
+}
+
+.desk-select__option {
+  border-radius: calc(var(--radius) - 1px) !important;
+  font-weight: 550 !important;
+  transition:
+    background 140ms ease,
+    color 140ms ease !important;
+}
+
+.desk-select__option--dark {
+  color: var(--rail-muted) !important;
+}
+
+.desk-select__option--dark:hover,
+.desk-select__option--dark[data-combobox-selected],
+.desk-select__option--dark[data-combobox-active] {
+  background: rgba(176, 141, 87, 0.2) !important;
+  color: var(--rail-ink) !important;
+}
+
+.desk-select__option--light {
+  color: var(--ink) !important;
+}
+
+.desk-select__option--light:hover,
+.desk-select__option--light[data-combobox-selected],
+.desk-select__option--light[data-combobox-active] {
+  background: var(--brass-soft) !important;
+  color: var(--brass-deep) !important;
+}
+
+.form-grid .desk-select-field {
+  display: block;
+}
+
+.form-grid .desk-select__root {
+  width: 100%;
 }
 
 .rail__nav {
@@ -239,11 +414,24 @@ select:focus-visible {
 
 .stage {
   position: relative;
+  isolation: isolate;
   padding: 1.35rem;
   min-width: 0;
   min-height: 0;
   height: 100%;
   overflow: auto;
+  background-color: #e6dfd2;
+  background-image:
+    linear-gradient(
+      160deg,
+      rgba(247, 243, 235, 0.72) 0%,
+      rgba(236, 228, 214, 0.55) 42%,
+      rgba(228, 216, 196, 0.48) 100%
+    ),
+    url('./assets/stage-bg-anime.jpg');
+  background-size: cover;
+  background-position: center 35%;
+  background-repeat: no-repeat;
 }
 
 .stage::before,
@@ -254,6 +442,7 @@ select:focus-visible {
   height: 14px;
   border: 1.5px solid rgba(139, 106, 58, 0.45);
   pointer-events: none;
+  z-index: 2;
 }
 
 .stage::before {
@@ -308,8 +497,14 @@ select:focus-visible {
 
 .panel {
   position: relative;
+  z-index: 1;
   background:
-    linear-gradient(180deg, #fbf8f1 0%, var(--surface) 100%);
+    linear-gradient(
+      180deg,
+      rgba(251, 248, 241, 0.94) 0%,
+      rgba(247, 243, 235, 0.92) 100%
+    );
+  backdrop-filter: blur(6px);
   border: 1px solid var(--rule);
   border-radius: 10px;
   padding: 1.35rem 1.4rem 1.5rem;
@@ -318,7 +513,7 @@ select:focus-visible {
   align-content: start;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.65) inset,
-    0 18px 40px rgba(40, 32, 22, 0.08);
+    0 18px 40px rgba(40, 32, 22, 0.12);
 }
 
 .panel::before {
@@ -360,18 +555,20 @@ select:focus-visible {
 }
 
 .panel__actions {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }
 
-.panel__actions select {
-  border: 1px solid var(--rule);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: var(--radius);
-  padding: 0.45rem 0.7rem;
+.panel__actions .btn {
+  min-height: 2.45rem;
+}
+
+.panel__actions .select-menu {
+  z-index: 6;
 }
 
 .dropzone {
@@ -502,18 +699,27 @@ select:focus-visible {
 }
 
 .btn--ghost {
-  background: transparent;
+  background: color-mix(in srgb, var(--surface) 70%, white);
   color: var(--muted);
 }
 
 .btn--ghost:hover {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 35%, var(--rule));
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--brass) 45%, var(--rule));
+  background: var(--brass-soft);
 }
 
-.btn.is-disabled {
-  opacity: 0.55;
+.btn--danger:hover {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--rule));
+  background: #f8e6e3;
+}
+
+.btn.is-disabled,
+.btn:disabled {
+  opacity: 0.45;
   pointer-events: none;
+  cursor: not-allowed;
 }
 
 .empty {
@@ -708,12 +914,19 @@ select:focus-visible {
   color: var(--ink);
   border-radius: var(--radius);
   padding: 0.72rem 0.85rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.composer input:focus,
-.form-grid input:focus,
-.form-grid select:focus {
-  border-color: var(--brass);
+.form-grid select {
+  padding-right: 2.1rem;
+}
+
+.composer .btn {
+  min-height: 2.85rem;
+  padding-inline: 1.15rem;
 }
 
 .form-grid {
