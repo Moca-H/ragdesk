@@ -1,7 +1,7 @@
-[project]
+﻿[project]
 name = "ragdesk-mcp"
-version = "0.1.0"
-description = "MCP server for ragdesk — list KBs, ingest text, and ask your local RAG API"
+version = "0.1.1"
+description = "MCP server for ragdesk 鈥?list KBs, ingest text, and ask your local RAG API"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
