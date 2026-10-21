@@ -72,13 +72,19 @@ docker compose up --build
 
 请求头 `X-Ragdesk-KB` 指定知识库（默认 `default`）。
 
-## MCP（可选，给 Cursor / Agent 用）
+## MCP（可选）
 
-只想用网页问答时**不用配 MCP**。只有希望 Cursor 里的 AI 直接调用本机知识库时，才需要下面配置。
+把本机知识库提供给 AI 客户端用。包：[`ragdesk-mcp`](https://pypi.org/project/ragdesk-mcp/)（PyPI）。
 
-前提：本机已启动 ragdesk API（`npm run dev` 或 Docker，默认 `http://127.0.0.1:8000`）。
+| 你想做什么 | 要不要配 MCP |
+|------------|----------------|
+| 只用网页上传 / 对话 | 不需要 |
+| 后端、脚本调接口 | 不需要，直接用下面「API 摘要」的 HTTP |
+| Cursor / Claude Desktop / DeepSeek Harness 等 Agent 查库 | 需要 |
 
-包已发布到 PyPI：[`ragdesk-mcp`](https://pypi.org/project/ragdesk-mcp/)。在 Cursor 的 MCP 配置里加入：
+前提：API 已启动（`npm run dev` 或 Docker，默认 `http://127.0.0.1:8000`）。
+
+### Cursor
 
 ```json
 {
@@ -95,9 +101,38 @@ docker compose up --build
 }
 ```
 
-更多说明见 [apps/mcp/README.md](apps/mcp/README.md)。
+### Claude Desktop
 
-> 维护者发新版：改 `apps/mcp` 版本号后打标签 `ragdesk-mcp-vX.Y.Z` 推送即可；需仓库 Secret `PYPI_API_TOKEN`。
+配置文件里同样加入上述 `mcpServers.ragdesk` 段（Windows：`%APPDATA%\Claude\claude_desktop_config.json`），保存后重启。
+
+### DeepSeek Harness
+
+使用官方 MCP 插件 `@deepseek-ai/dsh-mcp-client`，stdio 示例：
+
+```yaml
+- insert:
+    - id: mcp-ragdesk
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ragdesk
+        transport: stdio
+        command: uvx
+        args: ['ragdesk-mcp']
+        env:
+          RAGDESK_API_BASE: http://127.0.0.1:8000
+          RAGDESK_KB: default
+```
+
+工具名形如 `mcp__ragdesk__ask`。
+
+### 其他 MCP 客户端 / 后端
+
+- 其他支持 MCP stdio 的 IDE / Agent：command=`uvx`，args=`["ragdesk-mcp"]`，并设置 `RAGDESK_API_BASE`。
+- 后端业务代码请走 HTTP，不要绕 MCP。
+
+完整说明（环境变量、工具列表、本地开发、发版）：[apps/mcp/README.md](apps/mcp/README.md)。
+
+> 维护者发 MCP 新版：改版本号后打标签 `ragdesk-mcp-vX.Y.Z`；需仓库 Secret `PYPI_API_TOKEN`。
 
 ## 目录
 
