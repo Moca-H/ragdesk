@@ -80,13 +80,13 @@ pip install -e .
 ragdesk-mcp
 ```
 
-## Publish
+## Publish (maintainers)
 
-GitHub Actions publishes to PyPI when you push a tag:
+Bump `version` in `pyproject.toml`, then tag and push. GitHub Actions uploads to PyPI:
 
 ```bash
-git tag ragdesk-mcp-v0.1.0
-git push origin ragdesk-mcp-v0.1.0
+git tag ragdesk-mcp-v0.1.2
+git push origin ragdesk-mcp-v0.1.2
 ```
 
-Requires repository secret `PYPI_API_TOKEN` (PyPI API token, username `__token__`).
+Requires repository secret `PYPI_API_TOKEN` (PyPI project-scoped token; twine username is `__token__`). End users do **not** need this — they install with `uvx ragdesk-mcp` / `pip install ragdesk-mcp`.
