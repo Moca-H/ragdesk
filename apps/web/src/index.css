@@ -414,11 +414,24 @@ select.field--light option,
 
 .stage {
   position: relative;
+  isolation: isolate;
   padding: 1.35rem;
   min-width: 0;
   min-height: 0;
   height: 100%;
   overflow: auto;
+  background-color: #e6dfd2;
+  background-image:
+    linear-gradient(
+      160deg,
+      rgba(247, 243, 235, 0.72) 0%,
+      rgba(236, 228, 214, 0.55) 42%,
+      rgba(228, 216, 196, 0.48) 100%
+    ),
+    url('./assets/stage-bg-anime.jpg');
+  background-size: cover;
+  background-position: center 35%;
+  background-repeat: no-repeat;
 }
 
 .stage::before,
@@ -429,6 +442,7 @@ select.field--light option,
   height: 14px;
   border: 1.5px solid rgba(139, 106, 58, 0.45);
   pointer-events: none;
+  z-index: 2;
 }
 
 .stage::before {
@@ -483,8 +497,14 @@ select.field--light option,
 
 .panel {
   position: relative;
+  z-index: 1;
   background:
-    linear-gradient(180deg, #fbf8f1 0%, var(--surface) 100%);
+    linear-gradient(
+      180deg,
+      rgba(251, 248, 241, 0.94) 0%,
+      rgba(247, 243, 235, 0.92) 100%
+    );
+  backdrop-filter: blur(6px);
   border: 1px solid var(--rule);
   border-radius: 10px;
   padding: 1.35rem 1.4rem 1.5rem;
@@ -493,7 +513,7 @@ select.field--light option,
   align-content: start;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.65) inset,
-    0 18px 40px rgba(40, 32, 22, 0.08);
+    0 18px 40px rgba(40, 32, 22, 0.12);
 }
 
 .panel::before {
