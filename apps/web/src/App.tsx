@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   deleteDocument,
+  fetchProviderStatus,
   fetchSettings,
   listDocuments,
   reindexDocuments,
@@ -11,6 +12,7 @@ import {
   type Citation,
   type DocumentInfo,
   type ProviderName,
+  type ProviderStatus,
   type Settings,
 } from './api'
 
@@ -420,6 +422,8 @@ function SettingsPanel({
   const [chatModel, setChatModel] = useState('')
   const [embeddingModel, setEmbeddingModel] = useState('')
   const [saving, setSaving] = useState(false)
+  const [probing, setProbing] = useState(false)
+  const [probe, setProbe] = useState<ProviderStatus | null>(null)
 
   useEffect(() => {
     if (!settings) return
@@ -444,13 +448,35 @@ function SettingsPanel({
       setApiKey('')
       setStatus(
         next.has_documents
-          ? '设置已保存。切换 Provider/Embedding 后如检索异常，请重新上传文档重建索引。'
+          ? '设置已保存。若更换了 Embedding，请到资料库点「重建索引」。'
           : '设置已保存。',
       )
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function onProbe() {
+    setProbing(true)
+    try {
+      // Persist draft settings first so probe uses the values on screen.
+      await saveSettings({
+        provider,
+        base_url: baseUrl,
+        chat_model: chatModel,
+        embedding_model: embeddingModel,
+        ...(apiKey ? { api_key: apiKey } : {}),
+      })
+      const status = await fetchProviderStatus()
+      setProbe(status)
+      setStatus(status.ok ? status.message : `连通失败：${status.message}`)
+    } catch (err) {
+      setProbe(null)
+      setStatus(err instanceof Error ? err.message : 'Probe failed')
+    } finally {
+      setProbing(false)
     }
   }
 
@@ -463,15 +489,32 @@ function SettingsPanel({
             切换 Mock、OpenAI 兼容接口或 Ollama。密钥只保存在本机，不会上传。
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn--primary"
-          disabled={saving || !settings}
-          onClick={() => void onSave()}
-        >
-          {saving ? '保存中…' : '保存设置'}
-        </button>
+        <div className="panel__actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={probing || !settings}
+            onClick={() => void onProbe()}
+          >
+            {probing ? '检测中…' : '检测连通'}
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={saving || !settings}
+            onClick={() => void onSave()}
+          >
+            {saving ? '保存中…' : '保存设置'}
+          </button>
+        </div>
       </div>
+
+      {probe ? (
+        <div className={probe.ok ? 'probe probe--ok' : 'probe probe--bad'}>
+          <strong>{probe.ok ? '已连通' : '未连通'}</strong>
+          <span>{probe.message}</span>
+        </div>
+      ) : null}
 
       <div className="form-grid">
         <label>
@@ -500,18 +543,30 @@ function SettingsPanel({
         <label>
           <span>Chat Model</span>
           <input
+            list="chat-model-options"
             value={chatModel}
             onChange={(e) => setChatModel(e.target.value)}
             placeholder="gpt-4o-mini / llama3.2"
           />
+          <datalist id="chat-model-options">
+            {(probe?.chat_models ?? []).map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
         </label>
         <label>
           <span>Embedding Model</span>
           <input
+            list="embed-model-options"
             value={embeddingModel}
             onChange={(e) => setEmbeddingModel(e.target.value)}
             placeholder="text-embedding-3-small / nomic-embed-text"
           />
+          <datalist id="embed-model-options">
+            {(probe?.embedding_models ?? []).map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
         </label>
         <label className="span-2">
           <span>

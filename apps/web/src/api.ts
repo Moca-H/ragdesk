@@ -98,6 +98,21 @@ export async function reindexDocuments(): Promise<ReindexResult> {
   return res.json()
 }
 
+export type ProviderStatus = {
+  provider: ProviderName
+  ok: boolean
+  message: string
+  base_url: string
+  chat_models: string[]
+  embedding_models: string[]
+}
+
+export async function fetchProviderStatus(): Promise<ProviderStatus> {
+  const res = await fetch('/api/provider/status')
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
 export async function streamChat(
   messages: { role: string; content: string }[],
   topK: number,
