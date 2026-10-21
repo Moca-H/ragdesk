@@ -1,3 +1,4 @@
+import { Modal, Text, TextInput } from '@mantine/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createKnowledgeBase,
@@ -22,6 +23,7 @@ import {
   type Settings,
 } from './api'
 import { DeskSelect } from './DeskSelect'
+import './DeskModal.css'
 
 type Tab = 'library' | 'chat' | 'eval' | 'settings'
 
@@ -42,6 +44,40 @@ export default function App() {
   const [kbId, setKbId] = useState(getActiveKbId())
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
+  const [kbModalOpen, setKbModalOpen] = useState(false)
+  const [newKbName, setNewKbName] = useState('')
+  const [creatingKb, setCreatingKb] = useState(false)
+
+  function openKbModal() {
+    setNewKbName('')
+    setKbModalOpen(true)
+  }
+
+  function closeKbModal() {
+    if (creatingKb) return
+    setKbModalOpen(false)
+  }
+
+  async function submitNewKb() {
+    const name = newKbName.trim()
+    if (!name) {
+      setStatus('请填写知识库名称')
+      return
+    }
+    setCreatingKb(true)
+    try {
+      const kb = await createKnowledgeBase(name)
+      setActiveKbId(kb.id)
+      setKbId(kb.id)
+      setStatus(`已创建知识库：${kb.name}`)
+      setKbModalOpen(false)
+      setNewKbName('')
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : '创建失败')
+    } finally {
+      setCreatingKb(false)
+    }
+  }
 
   async function refresh() {
     const [s, d, kbList] = await Promise.all([
@@ -132,17 +168,7 @@ export default function App() {
           <button
             type="button"
             className="btn btn--ghost rail__kb-add"
-            onClick={() => {
-              const name = window.prompt('新知识库名称')
-              if (!name) return
-              void createKnowledgeBase(name)
-                .then((kb) => {
-                  setActiveKbId(kb.id)
-                  setKbId(kb.id)
-                  setStatus(`已创建知识库：${kb.name}`)
-                })
-                .catch((err: Error) => setStatus(err.message))
-            }}
+            onClick={openKbModal}
           >
             新建
           </button>
@@ -213,6 +239,53 @@ export default function App() {
           ) : null}
         </main>
       </div>
+
+      <Modal
+        className="desk-modal"
+        opened={kbModalOpen}
+        onClose={closeKbModal}
+        title="新建知识库"
+        centered
+        radius="md"
+        overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
+        transitionProps={{ transition: 'pop', duration: 160 }}
+      >
+        <Text size="sm" mb="sm">
+          为不同主题或项目单独开一个抽屉，资料互不影响。
+        </Text>
+        <TextInput
+          label="名称"
+          placeholder="例如：产品手册 / 论文笔记"
+          value={newKbName}
+          onChange={(e) => setNewKbName(e.currentTarget.value)}
+          maxLength={64}
+          data-autofocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void submitNewKb()
+            }
+          }}
+        />
+        <div className="desk-modal__actions">
+          <button
+            type="button"
+            className="desk-modal__btn"
+            disabled={creatingKb}
+            onClick={closeKbModal}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="desk-modal__btn desk-modal__btn--primary"
+            disabled={creatingKb || !newKbName.trim()}
+            onClick={() => void submitNewKb()}
+          >
+            {creatingKb ? '创建中…' : '创建'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -232,6 +305,11 @@ function LibraryPanel({
 }) {
   const [dragOver, setDragOver] = useState(false)
   const [stageText, setStageText] = useState('')
+  const [confirm, setConfirm] = useState<
+    | null
+    | { kind: 'delete'; id: string; name: string }
+    | { kind: 'reindex' }
+  >(null)
 
   async function ingestFiles(fileList: FileList | File[] | null) {
     if (!fileList) return
@@ -262,35 +340,42 @@ function LibraryPanel({
     }
   }
 
-  async function onDelete(id: string, name: string) {
-    if (!window.confirm(`删除 ${name}？`)) return
-    setBusy(true)
-    try {
-      await deleteDocument(id)
-      setStatus(`已删除 ${name}`)
-      onChange()
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Delete failed')
-    } finally {
-      setBusy(false)
-    }
+  function askDelete(id: string, name: string) {
+    setConfirm({ kind: 'delete', id, name })
   }
 
-  async function onReindex() {
+  function askReindex() {
     if (docs.length === 0) {
       setStatus('没有可重建的文档')
       return
     }
-    if (!window.confirm('按当前 Provider / Embedding 重建全部索引？')) return
+    setConfirm({ kind: 'reindex' })
+  }
+
+  async function runConfirmed() {
+    if (!confirm) return
+    const current = confirm
+    setConfirm(null)
     setBusy(true)
     try {
-      const result = await reindexDocuments()
-      setStatus(
-        `索引重建完成：成功 ${result.rebuilt}，失败 ${result.failed}，共 ${result.total} 份`,
-      )
+      if (current.kind === 'delete') {
+        await deleteDocument(current.id)
+        setStatus(`已删除 ${current.name}`)
+      } else {
+        const result = await reindexDocuments()
+        setStatus(
+          `索引重建完成：成功 ${result.rebuilt}，失败 ${result.failed}，共 ${result.total} 份`,
+        )
+      }
       onChange()
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Reindex failed')
+      setStatus(
+        err instanceof Error
+          ? err.message
+          : current.kind === 'delete'
+            ? 'Delete failed'
+            : 'Reindex failed',
+      )
     } finally {
       setBusy(false)
     }
@@ -329,7 +414,7 @@ function LibraryPanel({
             type="button"
             className="btn btn--ghost"
             disabled={busy || docs.length === 0}
-            onClick={() => void onReindex()}
+            onClick={askReindex}
           >
             重建索引
           </button>
@@ -394,7 +479,7 @@ function LibraryPanel({
                 type="button"
                 className="btn btn--ghost"
                 disabled={busy}
-                onClick={() => void onDelete(d.id, d.filename)}
+                onClick={() => askDelete(d.id, d.filename)}
               >
                 删除
               </button>
@@ -402,6 +487,43 @@ function LibraryPanel({
           ))}
         </ul>
       )}
+
+      <Modal
+        className="desk-modal"
+        opened={confirm != null}
+        onClose={() => setConfirm(null)}
+        title={confirm?.kind === 'delete' ? '删除文档' : '重建索引'}
+        centered
+        radius="md"
+        overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
+        transitionProps={{ transition: 'pop', duration: 160 }}
+      >
+        <Text size="sm">
+          {confirm?.kind === 'delete'
+            ? `确定删除「${confirm.name}」？此操作不可撤销。`
+            : '按当前 Provider / Embedding 重建全部索引？'}
+        </Text>
+        <div className="desk-modal__actions">
+          <button
+            type="button"
+            className="desk-modal__btn"
+            onClick={() => setConfirm(null)}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className={
+              confirm?.kind === 'delete'
+                ? 'desk-modal__btn desk-modal__btn--danger'
+                : 'desk-modal__btn desk-modal__btn--primary'
+            }
+            onClick={() => void runConfirmed()}
+          >
+            {confirm?.kind === 'delete' ? '删除' : '开始重建'}
+          </button>
+        </div>
+      </Modal>
     </section>
   )
 }

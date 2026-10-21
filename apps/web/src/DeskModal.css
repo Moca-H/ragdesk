@@ -1,0 +1,92 @@
+.desk-modal .mantine-Modal-content {
+  background: linear-gradient(180deg, #fbf8f1 0%, #f7f3eb 100%);
+  border: 1px solid #c9bfb0;
+  box-shadow: 0 22px 48px rgba(40, 32, 22, 0.22);
+}
+
+.desk-modal .mantine-Modal-header {
+  background: transparent;
+  border-bottom: 1px dashed #c9bfb0;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.85rem;
+}
+
+.desk-modal .mantine-Modal-title {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #171513;
+}
+
+.desk-modal .mantine-Modal-body {
+  color: #171513;
+}
+
+.desk-modal .mantine-Modal-close {
+  color: #6a6258;
+}
+
+.desk-modal .mantine-TextInput-label,
+.desk-modal .mantine-Text-root {
+  color: #6a6258;
+}
+
+.desk-modal .mantine-TextInput-input {
+  background: #fffdf8;
+  border-color: #c9bfb0;
+  color: #171513;
+  font-weight: 500;
+}
+
+.desk-modal .mantine-TextInput-input:focus {
+  border-color: #b08d57;
+}
+
+.desk-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+
+.desk-modal__btn {
+  min-height: 2.35rem;
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 0.45rem 0.95rem;
+  cursor: pointer;
+  border: 1px solid #c9bfb0;
+  background: #fffdf8;
+  color: #171513;
+  font: inherit;
+}
+
+.desk-modal__btn:hover {
+  border-color: #b08d57;
+  background: #efe2cc;
+}
+
+.desk-modal__btn--primary {
+  background: linear-gradient(180deg, #c49a5f, #b08d57);
+  border-color: transparent;
+  color: #1a140c;
+}
+
+.desk-modal__btn--primary:hover {
+  background: linear-gradient(180deg, #b88a4d, #8b6a3a);
+}
+
+.desk-modal__btn--danger {
+  background: #9c3a2f;
+  border-color: transparent;
+  color: #fffdf8;
+}
+
+.desk-modal__btn--danger:hover {
+  background: #7e2e25;
+}
+
+.desk-modal__btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
