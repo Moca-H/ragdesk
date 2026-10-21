@@ -46,6 +46,7 @@ export function DeskSelect({
       allowDeselect={false}
       withCheckIcon
       checkIconPosition="right"
+      size="md"
       comboboxProps={{
         withinPortal: true,
         transitionProps: { transition: 'pop', duration: 160 },
