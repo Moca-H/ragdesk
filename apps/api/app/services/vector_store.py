@@ -1,13 +1,16 @@
+from __future__ import annotations
+
+from typing import Any
+
 import chromadb
-from chromadb.api.models.Collection import Collection
 
 from app.paths import CHROMA_DIR, ensure_data_dirs
 
 COLLECTION_NAME = "ragdesk_docs"
-_client: chromadb.PersistentClient | None = None
+_client: Any = None
 
 
-def get_client() -> chromadb.PersistentClient:
+def get_client() -> Any:
     global _client
     ensure_data_dirs()
     if _client is None:
@@ -15,7 +18,7 @@ def get_client() -> chromadb.PersistentClient:
     return _client
 
 
-def get_collection() -> Collection:
+def get_collection() -> Any:
     return get_client().get_or_create_collection(
         name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
