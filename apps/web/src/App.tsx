@@ -21,7 +21,7 @@ import {
   type ProviderStatus,
   type Settings,
 } from './api'
-import { SelectMenu } from './SelectMenu'
+import { DeskSelect } from './DeskSelect'
 
 type Tab = 'library' | 'chat' | 'eval' | 'settings'
 
@@ -118,19 +118,17 @@ export default function App() {
           <p>把文档放进抽屉，再当面问它。</p>
         </div>
         <div className="rail__kb">
-          <div className="rail__kb-label">
-            <small>知识库</small>
-            <SelectMenu
-              tone="dark"
-              aria-label="选择知识库"
-              value={kbId}
-              options={kbs.map((kb) => ({ value: kb.id, label: kb.name }))}
-              onChange={(id) => {
-                setActiveKbId(id)
-                setKbId(id)
-              }}
-            />
-          </div>
+          <DeskSelect
+            tone="dark"
+            label="知识库"
+            aria-label="选择知识库"
+            value={kbId}
+            data={kbs.map((kb) => ({ value: kb.id, label: kb.name }))}
+            onChange={(id) => {
+              setActiveKbId(id)
+              setKbId(id)
+            }}
+          />
           <button
             type="button"
             className="btn btn--ghost rail__kb-add"
@@ -554,12 +552,13 @@ function ChatPanel({
           </p>
         </div>
         <div className="panel__actions">
-          <SelectMenu
+          <DeskSelect
             tone="light"
             aria-label="检索模式"
+            className="desk-select--inline"
             value={mode}
             disabled={streaming}
-            options={[
+            data={[
               { value: 'rag', label: '直接检索' },
               { value: 'agent', label: 'Agent（先改写再检索）' },
             ]}
@@ -886,13 +885,13 @@ function SettingsPanel({
       ) : null}
 
       <div className="form-grid">
-        <label>
-          <span>Provider</span>
-          <SelectMenu
+        <label className="desk-select-field">
+          <DeskSelect
             tone="light"
+            label="Provider"
             aria-label="Provider"
             value={provider}
-            options={[
+            data={[
               { value: 'mock', label: 'mock（本地演示）' },
               {
                 value: 'openai_compat',

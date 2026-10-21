@@ -192,17 +192,6 @@ select.field--light option,
   gap: 0.55rem;
 }
 
-.rail__kb-label {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.rail__kb small {
-  color: var(--rail-muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-}
-
 .rail__kb-add {
   color: var(--rail-ink) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
@@ -215,227 +204,135 @@ select.field--light option,
   background: rgba(176, 141, 87, 0.1) !important;
 }
 
-/* Custom dropdown — replaces native select popups */
-.select-menu {
-  position: relative;
+/* Mantine Select — themed to desk UI */
+.desk-select__root {
   width: 100%;
-  z-index: 2;
 }
 
-.select-menu__trigger {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  min-height: 2.45rem;
-  border-radius: var(--radius);
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
+.desk-select--inline.desk-select__root,
+.desk-select--inline {
+  width: auto;
+  min-width: 11rem;
+}
+
+.desk-select__label {
+  margin-bottom: 0.35rem;
+}
+
+.desk-select--dark .desk-select__label {
+  color: var(--rail-muted) !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+}
+
+.desk-select--light .desk-select__label {
+  color: var(--muted) !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+}
+
+.desk-select__input {
+  font-weight: 600 !important;
+  min-height: 2.45rem !important;
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 120ms ease;
+    box-shadow 160ms ease !important;
 }
 
-.select-menu__value {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.desk-select--dark .desk-select__input {
+  background: rgba(0, 0, 0, 0.38) !important;
+  border: 1px solid rgba(212, 179, 122, 0.28) !important;
+  color: var(--rail-ink) !important;
 }
 
-.select-menu__chevron {
-  width: 0.65rem;
-  height: 0.65rem;
-  flex-shrink: 0;
-  border-right: 1.6px solid currentColor;
-  border-bottom: 1.6px solid currentColor;
-  transform: rotate(45deg) translateY(-2px);
-  opacity: 0.75;
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+.desk-select--dark .desk-select__input:hover {
+  border-color: rgba(212, 179, 122, 0.55) !important;
+  background: rgba(0, 0, 0, 0.48) !important;
 }
 
-.select-menu.is-open .select-menu__chevron,
-.select-menu.is-leaving .select-menu__chevron {
-  transform: rotate(225deg) translateY(-1px);
+.desk-select--dark .desk-select__input:focus {
+  border-color: var(--brass) !important;
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.28) !important;
 }
 
-.select-menu__list {
-  position: absolute;
-  top: calc(100% + 0.35rem);
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: 0.35rem;
-  list-style: none;
-  border-radius: calc(var(--radius) + 2px);
-  z-index: 40;
-  transform-origin: top center;
-  animation: select-pop-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.desk-select--dark .desk-select__section {
+  color: #d4b37a !important;
 }
 
-.select-menu.is-leaving .select-menu__list {
-  animation: select-pop-out 140ms ease forwards;
+.desk-select--light .desk-select__input {
+  background: #fffdf8 !important;
+  border: 1px solid var(--rule) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset !important;
 }
 
-.select-menu__option {
-  width: 100%;
-  display: block;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  font: inherit;
-  font-weight: 550;
-  border-radius: calc(var(--radius) - 1px);
-  padding: 0.55rem 0.65rem;
-  cursor: pointer;
+.desk-select--light .desk-select__input:hover {
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--rule)) !important;
+}
+
+.desk-select--light .desk-select__input:focus {
+  border-color: var(--brass) !important;
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18) !important;
+}
+
+.desk-select--light .desk-select__section {
+  color: var(--brass-deep) !important;
+}
+
+.desk-select__dropdown {
+  padding: 0.35rem !important;
+  border-radius: calc(var(--radius) + 2px) !important;
+}
+
+.desk-select__dropdown--dark {
+  background: linear-gradient(180deg, #2a2622 0%, #1c1a18 100%) !important;
+  border: 1px solid rgba(212, 179, 122, 0.28) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45) !important;
+}
+
+.desk-select__dropdown--light {
+  background: linear-gradient(180deg, #fffdf8 0%, #f7f3eb 100%) !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: 0 14px 32px rgba(40, 32, 22, 0.14) !important;
+}
+
+.desk-select__option {
+  border-radius: calc(var(--radius) - 1px) !important;
+  font-weight: 550 !important;
   transition:
     background 140ms ease,
-    color 140ms ease,
-    transform 120ms ease;
+    color 140ms ease !important;
 }
 
-.select-menu__option:active {
-  transform: scale(0.985);
+.desk-select__option--dark {
+  color: var(--rail-muted) !important;
 }
 
-.select-menu.is-disabled {
-  opacity: 0.5;
-  pointer-events: none;
+.desk-select__option--dark:hover,
+.desk-select__option--dark[data-combobox-selected],
+.desk-select__option--dark[data-combobox-active] {
+  background: rgba(176, 141, 87, 0.2) !important;
+  color: var(--rail-ink) !important;
 }
 
-.select-menu--dark .select-menu__trigger {
-  border: 1px solid rgba(212, 179, 122, 0.28);
-  background: rgba(0, 0, 0, 0.38);
-  color: var(--rail-ink);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 0 0 1px rgba(0, 0, 0, 0.2);
+.desk-select__option--light {
+  color: var(--ink) !important;
 }
 
-.select-menu--dark .select-menu__trigger:hover {
-  border-color: rgba(212, 179, 122, 0.55);
-  background: rgba(0, 0, 0, 0.48);
+.desk-select__option--light:hover,
+.desk-select__option--light[data-combobox-selected],
+.desk-select__option--light[data-combobox-active] {
+  background: var(--brass-soft) !important;
+  color: var(--brass-deep) !important;
 }
 
-.select-menu--dark.is-open .select-menu__trigger {
-  border-color: var(--brass);
-  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.28);
+.form-grid .desk-select-field {
+  display: block;
 }
 
-.select-menu--dark .select-menu__chevron {
-  color: #d4b37a;
-}
-
-.select-menu--dark .select-menu__list {
-  border: 1px solid rgba(212, 179, 122, 0.28);
-  background: linear-gradient(180deg, #2a2622 0%, #1c1a18 100%);
-  box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-}
-
-.select-menu--dark .select-menu__option {
-  color: var(--rail-muted);
-}
-
-.select-menu--dark .select-menu__option:hover {
-  background: rgba(176, 141, 87, 0.16);
-  color: var(--rail-ink);
-}
-
-.select-menu--dark .select-menu__option.is-active {
-  background: rgba(176, 141, 87, 0.22);
-  color: var(--rail-ink);
-}
-
-.select-menu--light {
-  width: auto;
-  min-width: 10.5rem;
-}
-
-.select-menu--light .select-menu__trigger {
-  border: 1px solid var(--rule);
-  background: #fffdf8;
-  color: var(--ink);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
-  font-size: 0.92rem;
-}
-
-.select-menu--light .select-menu__trigger:hover {
-  border-color: color-mix(in srgb, var(--brass) 55%, var(--rule));
-}
-
-.select-menu--light.is-open .select-menu__trigger {
-  border-color: var(--brass);
-  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18);
-}
-
-.select-menu--light .select-menu__chevron {
-  color: var(--brass-deep);
-}
-
-.select-menu--light .select-menu__list {
-  border: 1px solid var(--rule);
-  background: linear-gradient(180deg, #fffdf8 0%, var(--surface) 100%);
-  box-shadow:
-    0 14px 32px rgba(40, 32, 22, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;
-}
-
-.select-menu--light .select-menu__option {
-  color: var(--ink);
-}
-
-.select-menu--light .select-menu__option:hover {
-  background: var(--brass-soft);
-}
-
-.select-menu--light .select-menu__option.is-active {
-  background: color-mix(in srgb, var(--brass-soft) 80%, #fff);
-  color: var(--brass-deep);
-}
-
-.form-grid .select-menu--light {
+.form-grid .desk-select__root {
   width: 100%;
-}
-
-@keyframes select-pop-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes select-pop-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .select-menu__list,
-  .select-menu.is-leaving .select-menu__list,
-  .select-menu__chevron,
-  .select-menu__trigger,
-  .select-menu__option {
-    animation: none !important;
-    transition: none !important;
-  }
 }
 
 .rail__nav {
