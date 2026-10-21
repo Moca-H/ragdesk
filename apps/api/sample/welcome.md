@@ -6,7 +6,7 @@
 
 ragdesk 是一个可切换 Provider 的本地知识库问答（RAG）工作台：
 
-1. 上传 Markdown / TXT / PDF
+1. 上传 Markdown / TXT / PDF / Word（.docx）/ Excel（.xlsx）
 2. 自动切分并向量化
 3. 基于检索片段回答问题，并展示引用来源
 
