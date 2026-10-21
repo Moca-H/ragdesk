@@ -21,6 +21,7 @@ import {
   type ProviderStatus,
   type Settings,
 } from './api'
+import { SelectMenu } from './SelectMenu'
 
 type Tab = 'library' | 'chat' | 'eval' | 'settings'
 
@@ -117,22 +118,19 @@ export default function App() {
           <p>把文档放进抽屉，再当面问它。</p>
         </div>
         <div className="rail__kb">
-          <label>
+          <div className="rail__kb-label">
             <small>知识库</small>
-            <select
+            <SelectMenu
+              tone="dark"
+              aria-label="选择知识库"
               value={kbId}
-              onChange={(e) => {
-                setActiveKbId(e.target.value)
-                setKbId(e.target.value)
+              options={kbs.map((kb) => ({ value: kb.id, label: kb.name }))}
+              onChange={(id) => {
+                setActiveKbId(id)
+                setKbId(id)
               }}
-            >
-              {kbs.map((kb) => (
-                <option key={kb.id} value={kb.id}>
-                  {kb.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
           <button
             type="button"
             className="btn btn--ghost rail__kb-add"
@@ -556,14 +554,17 @@ function ChatPanel({
           </p>
         </div>
         <div className="panel__actions">
-          <select
+          <SelectMenu
+            tone="light"
+            aria-label="检索模式"
             value={mode}
-            onChange={(e) => setMode(e.target.value as 'rag' | 'agent')}
             disabled={streaming}
-          >
-            <option value="rag">直接检索</option>
-            <option value="agent">Agent（先改写再检索）</option>
-          </select>
+            options={[
+              { value: 'rag', label: '直接检索' },
+              { value: 'agent', label: 'Agent（先改写再检索）' },
+            ]}
+            onChange={(v) => setMode(v as 'rag' | 'agent')}
+          />
           {streaming ? (
             <button
               type="button"
@@ -887,14 +888,20 @@ function SettingsPanel({
       <div className="form-grid">
         <label>
           <span>Provider</span>
-          <select
+          <SelectMenu
+            tone="light"
+            aria-label="Provider"
             value={provider}
-            onChange={(e) => setProvider(e.target.value as ProviderName)}
-          >
-            <option value="mock">mock（本地演示）</option>
-            <option value="openai_compat">openai_compat（OpenAI / DeepSeek 等）</option>
-            <option value="ollama">ollama</option>
-          </select>
+            options={[
+              { value: 'mock', label: 'mock（本地演示）' },
+              {
+                value: 'openai_compat',
+                label: 'openai_compat（OpenAI / DeepSeek 等）',
+              },
+              { value: 'ollama', label: 'ollama' },
+            ]}
+            onChange={(v) => setProvider(v as ProviderName)}
+          />
         </label>
         <label>
           <span>Base URL</span>
