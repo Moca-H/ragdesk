@@ -1,0 +1,11 @@
+{
+  "name": "ragdesk",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted RAG desk",
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
+    "dev:api": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-api.ps1",
+    "dev:web": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-web.ps1"
+  }
+}

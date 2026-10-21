@@ -8,35 +8,43 @@
 - **后端**：FastAPI + Chroma  
 - **Provider**：`mock`（开箱演示） / `openai_compat`（OpenAI、DeepSeek 等） / `ollama`
 
-## 快速开始
+## 快速开始（Windows 一键）
 
-### 1. 后端
+在项目根目录执行任一方式：
 
-```bash
-cd apps/api
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-# source .venv/bin/activate
-
-pip install -r requirements.txt
-copy .env.example .env   # Windows；Unix 用 cp
-uvicorn app.main:app --reload --port 8000
+```powershell
+.\dev.cmd
 ```
 
-### 2. 前端
+或：
 
-```bash
-cd apps/web
-npm install
+```powershell
 npm run dev
 ```
 
-打开 http://127.0.0.1:5173  
+或：
 
-默认 Provider 为 **mock**，无需 Key 即可体验上传与问答流程。
+```powershell
+.\scripts\dev.ps1
+```
+
+脚本会自动：
+
+1. 准备 Python 虚拟环境 / 安装依赖（仅首次）
+2. 安装前端依赖（仅首次）
+3. 同时启动 API（8000）和 Web（5173）
+4. 打开浏览器
+
+页面：http://127.0.0.1:5173  
+
+默认 Provider 为 **mock**，无需 Key 即可体验。
+
+### 分开启动（可选）
+
+```powershell
+npm run dev:api
+npm run dev:web
+```
 
 ## 切换真实模型
 
