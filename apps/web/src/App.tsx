@@ -3,6 +3,7 @@ import {
   deleteDocument,
   fetchSettings,
   listDocuments,
+  reindexDocuments,
   saveSettings,
   streamChat,
   uploadDocument,
@@ -155,6 +156,26 @@ function LibraryPanel({
     }
   }
 
+  async function onReindex() {
+    if (docs.length === 0) {
+      setStatus('没有可重建的文档')
+      return
+    }
+    if (!window.confirm('按当前 Provider / Embedding 重建全部索引？')) return
+    setBusy(true)
+    try {
+      const result = await reindexDocuments()
+      setStatus(
+        `索引重建完成：成功 ${result.rebuilt}，失败 ${result.failed}，共 ${result.total} 份`,
+      )
+      onChange()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Reindex failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel__head">
@@ -162,20 +183,30 @@ function LibraryPanel({
           <h2>资料库</h2>
           <p>放入 Markdown、TXT 或 PDF，系统会切段并建立检索索引。</p>
         </div>
-        <label className={`btn btn--primary ${busy ? 'is-disabled' : ''}`}>
-          {busy ? '处理中…' : '上传文档'}
-          <input
-            type="file"
-            accept=".md,.markdown,.txt,.pdf"
-            multiple
-            hidden
-            disabled={busy}
-            onChange={(e) => {
-              void onUpload(e.target.files)
-              e.target.value = ''
-            }}
-          />
-        </label>
+        <div className="panel__actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={busy || docs.length === 0}
+            onClick={() => void onReindex()}
+          >
+            重建索引
+          </button>
+          <label className={`btn btn--primary ${busy ? 'is-disabled' : ''}`}>
+            {busy ? '处理中…' : '上传文档'}
+            <input
+              type="file"
+              accept=".md,.markdown,.txt,.pdf"
+              multiple
+              hidden
+              disabled={busy}
+              onChange={(e) => {
+                void onUpload(e.target.files)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
       </div>
 
       {docs.length === 0 ? (

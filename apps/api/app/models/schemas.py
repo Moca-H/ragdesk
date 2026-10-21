@@ -32,6 +32,13 @@ class DocumentInfo(BaseModel):
     created_at: str
 
 
+class ReindexResult(BaseModel):
+    total: int
+    rebuilt: int
+    failed: int
+    documents: list[DocumentInfo]
+
+
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant", "system"]
     content: str

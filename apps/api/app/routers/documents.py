@@ -1,29 +1,29 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.models.schemas import DocumentInfo
+from app.models.schemas import DocumentInfo, ReindexResult
 from app.services import docs_meta
-from app.services.ingest import delete_document, ingest_upload
+from app.services.ingest import delete_document, ingest_upload, reindex_all
 
 router = APIRouter(tags=["documents"])
 
 ALLOWED = {".md", ".markdown", ".txt", ".pdf"}
 
 
+def _to_info(d: dict) -> DocumentInfo:
+    return DocumentInfo(
+        id=d["id"],
+        filename=d["filename"],
+        size=d["size"],
+        status=d["status"],
+        chunk_count=d.get("chunk_count", 0),
+        error=d.get("error"),
+        created_at=d["created_at"],
+    )
+
+
 @router.get("/api/documents", response_model=list[DocumentInfo])
 async def list_documents() -> list[DocumentInfo]:
-    docs = docs_meta.load_docs()
-    return [
-        DocumentInfo(
-            id=d["id"],
-            filename=d["filename"],
-            size=d["size"],
-            status=d["status"],
-            chunk_count=d.get("chunk_count", 0),
-            error=d.get("error"),
-            created_at=d["created_at"],
-        )
-        for d in docs
-    ]
+    return [_to_info(d) for d in docs_meta.load_docs()]
 
 
 @router.post("/api/documents", response_model=DocumentInfo)
@@ -39,14 +39,17 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentInfo:
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
     meta = await ingest_upload(name, content)
-    return DocumentInfo(
-        id=meta["id"],
-        filename=meta["filename"],
-        size=meta["size"],
-        status=meta["status"],
-        chunk_count=meta.get("chunk_count", 0),
-        error=meta.get("error"),
-        created_at=meta["created_at"],
+    return _to_info(meta)
+
+
+@router.post("/api/documents/reindex", response_model=ReindexResult)
+async def reindex_documents() -> ReindexResult:
+    result = await reindex_all()
+    return ReindexResult(
+        total=result["total"],
+        rebuilt=result["rebuilt"],
+        failed=result["failed"],
+        documents=[_to_info(d) for d in result["documents"]],
     )
 
 
