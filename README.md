@@ -72,9 +72,13 @@ docker compose up --build
 
 请求头 `X-Ragdesk-KB` 指定知识库（默认 `default`）。
 
-## MCP（给 Cursor / Agent 用）
+## MCP（可选，给 Cursor / Agent 用）
 
-旁路包 [`ragdesk-mcp`](apps/mcp)，通过 HTTP 调用本机 API，不改动核心业务代码。
+只想用网页问答时**不用配 MCP**。只有希望 Cursor 里的 AI 直接调用本机知识库时，才需要下面配置。
+
+前提：本机已启动 ragdesk API（`npm run dev` 或 Docker，默认 `http://127.0.0.1:8000`）。
+
+包已发布到 PyPI：[`ragdesk-mcp`](https://pypi.org/project/ragdesk-mcp/)。在 Cursor 的 MCP 配置里加入：
 
 ```json
 {
@@ -91,7 +95,9 @@ docker compose up --build
 }
 ```
 
-详见 [apps/mcp/README.md](apps/mcp/README.md)。发布到 PyPI：打标签 `ragdesk-mcp-v0.1.0`（需仓库 Secret `PYPI_API_TOKEN`）。
+更多说明见 [apps/mcp/README.md](apps/mcp/README.md)。
+
+> 维护者发新版：改 `apps/mcp` 版本号后打标签 `ragdesk-mcp-vX.Y.Z` 推送即可；需仓库 Secret `PYPI_API_TOKEN`。
 
 ## 目录
 
