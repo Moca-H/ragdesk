@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from app.paths import DATA_ROOT, KBS_PATH, docs_meta_path, ensure_data_dirs, uploads_dir
 
-DEFAULT = {"id": "default", "name": "默认知识库"}
+DEFAULT = {"id": "default", "name": "默认知识库", "readonly": False}
 
 
 def _migrate_legacy() -> None:
@@ -45,12 +45,24 @@ def _write(items: list[dict]) -> None:
 
 
 def list_kbs() -> list[dict]:
-    return _read()
-
-
-def create_kb(name: str) -> dict:
     items = _read()
-    kb = {"id": str(uuid4())[:8], "name": name.strip() or "未命名知识库"}
+    changed = False
+    for item in items:
+        if "readonly" not in item:
+            item["readonly"] = False
+            changed = True
+    if changed:
+        _write(items)
+    return items
+
+
+def create_kb(name: str, *, readonly: bool = False) -> dict:
+    items = _read()
+    kb = {
+        "id": str(uuid4())[:8],
+        "name": name.strip() or "未命名知识库",
+        "readonly": bool(readonly),
+    }
     items.append(kb)
     _write(items)
     ensure_data_dirs(kb["id"])
@@ -65,6 +77,25 @@ def rename_kb(kb_id: str, name: str) -> dict | None:
             _write(items)
             return item
     return None
+
+
+def set_readonly(kb_id: str, readonly: bool) -> dict | None:
+    items = _read()
+    for item in items:
+        if item["id"] == kb_id:
+            item["readonly"] = bool(readonly)
+            _write(items)
+            return item
+    return None
+
+
+def get_kb(kb_id: str) -> dict | None:
+    return next((item for item in _read() if item["id"] == kb_id), None)
+
+
+def is_readonly(kb_id: str) -> bool:
+    kb = get_kb(kb_id)
+    return bool(kb and kb.get("readonly"))
 
 
 def ensure_kb_exists(kb_id: str) -> bool:

@@ -15,14 +15,15 @@
 
 ## 功能概览
 
-- 多知识库隔离
-- 上传进度（解析 / 切分 / 向量化）与可读错误
-- 拖拽上传、示例一键导入、重建索引
-- 混合检索（向量 + BM25）
-- Agent 模式（先改写问题再检索）
+- 多知识库隔离、只读知识库、ZIP 导入/导出
+- 上传进度（解析 / 切分 / 向量化）与可读错误；入库失败可重试日志
+- 拖拽上传、选文件夹、粘贴文本 / URL 入库、示例一键导入、批量删除、重建索引
+- 监视文件夹（服务端轮询本机目录自动入库）
+- 混合检索（向量 + BM25）；Agent 模式展示改写 query；引用定位到片段
 - 对话停止 / 重试、本地历史、只读分享链接
-- Provider 连通检测与模型建议
-- 评测小面板
+- API Token（`RAGDESK_API_TOKEN`）与环境变量锁定设置（`RAGDESK_LOCK_SETTINGS`）
+- Provider 连通检测、健康面板、评测打分
+- CLI / 系统托盘快捷提问（可选）
 - Windows 一键启动 / Docker Compose
 
 ## 快速开始（Windows 一键）
@@ -60,17 +61,28 @@ docker compose up --build
 
 更换 Embedding 后请在资料库点「重建索引」。
 
+## 安全与预配（可选）
+
+| 环境变量 | 作用 |
+|----------|------|
+| `RAGDESK_API_TOKEN` | 启用后除 `/api/health` 外需 `Authorization: Bearer …` |
+| `RAGDESK_LOCK_SETTINGS` | 设为 `1`/`true` 时禁止网页改 Provider / 模型 |
+| `RAGDESK_*` Provider 相关 | 可在服务端预配 base_url / model / key（见 `apps/api`） |
+
+网页「设置」里可保存客户端 Token；健康页可查看是否启用。
+
 ## API 摘要
 
-- `GET/POST /api/kbs`
+- `GET/POST /api/kbs` · `PATCH /api/kbs/{id}/readonly` · `GET …/export` · `POST /api/kbs/import`
 - `GET/PUT /api/settings`
+- `GET/PUT /api/watch`
+- `GET /api/health` · `GET /api/health/detail`
 - `GET /api/provider/status`
-- `POST /api/documents/upload-stream`（SSE 进度）
-- `POST /api/documents/sample`
-- `POST /api/documents/reindex`
+- `POST /api/documents/upload-stream`（SSE）· `POST /api/documents/text` · `POST /api/documents/url`
+- `POST /api/documents/sample` · `POST /api/documents/reindex` · `POST /api/documents/delete-batch`
 - `POST /api/chat`（SSE，`mode=rag|agent`）
 
-请求头 `X-Ragdesk-KB` 指定知识库（默认 `default`）。
+请求头 `X-Ragdesk-KB` 指定知识库（默认 `default`）。若配置了 Token，再加 `Authorization: Bearer <token>`。
 
 ## MCP（可选）
 
@@ -134,6 +146,21 @@ docker compose up --build
 
 > 维护者发 MCP 新版：改版本号后打标签 `ragdesk-mcp-vX.Y.Z`；需仓库 Secret `PYPI_API_TOKEN`。
 
+## CLI / 托盘（可选）
+
+```powershell
+# 健康检查 / 入库 / 提问
+python apps/cli/ragdesk_cli.py health
+python apps/cli/ragdesk_cli.py ingest .\README.md
+python apps/cli/ragdesk_cli.py ask "这个项目是做什么的？"
+
+# 系统托盘（需 pystray + pillow）
+pip install pystray pillow
+python apps/tray/ragdesk_tray.py
+```
+
+环境变量：`RAGDESK_API_BASE`、`RAGDESK_KB`、`RAGDESK_API_TOKEN`、`RAGDESK_WEB_URL`。
+
 ## 目录
 
 ```
@@ -141,6 +168,8 @@ apps/
   api/   FastAPI + Chroma + Providers
   web/   React 工作台
   mcp/   MCP server（PyPI: ragdesk-mcp）
+  cli/   命令行 ask / ingest / health
+  tray/  轻量系统托盘快捷提问
 scripts/dev.ps1
 docker-compose.yml
 ```
@@ -153,4 +182,4 @@ MIT
 
 ## English
 
-Self-hosted RAG desk with multi knowledge bases, hybrid retrieval, agent rewrite mode, provider probing, eval panel, one-click local/Docker startup, and optional MCP (`ragdesk-mcp`) for Cursor / Claude Desktop / DeepSeek Harness. See `apps/mcp/README.md`.
+Self-hosted RAG desk with multi knowledge bases (export/import, readonly), folder watch, paste/URL ingest, API token + locked settings, hybrid retrieval, agent rewrite display, health/eval panels, CLI/tray helpers, one-click local/Docker startup, and optional MCP (`ragdesk-mcp`). See `apps/mcp/README.md`.

@@ -11,6 +11,7 @@ from pypdf import PdfReader
 from app.paths import API_ROOT, ensure_data_dirs, uploads_dir
 from app.services import docs_meta
 from app.services.providers import get_provider
+from app.services.retry import with_retry
 from app.services.vector_store import (
     delete_document_chunks,
     get_collection,
@@ -113,7 +114,11 @@ async def _index_file(
             )
         )
     provider = get_provider()
-    embeddings = await provider.embed(chunks)
+    embeddings = await with_retry(
+        lambda: provider.embed(chunks),
+        attempts=3,
+        label="embedding",
+    )
     collection = get_collection()
     ids = [f"{doc_id}:{i}" for i in range(len(chunks))]
     metadatas = [
