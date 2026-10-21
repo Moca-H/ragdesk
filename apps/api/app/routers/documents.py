@@ -13,7 +13,7 @@ from app.services.ingest import (
 
 router = APIRouter(tags=["documents"])
 
-ALLOWED = {".md", ".markdown", ".txt", ".pdf"}
+ALLOWED = {".md", ".markdown", ".txt", ".pdf", ".docx", ".xlsx"}
 
 
 def _to_info(d: dict) -> DocumentInfo:

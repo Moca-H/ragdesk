@@ -315,10 +315,10 @@ function LibraryPanel({
   async function ingestFiles(fileList: FileList | File[] | null) {
     if (!fileList) return
     const files = Array.from(fileList).filter((f) =>
-      /\.(md|markdown|txt|pdf)$/i.test(f.name),
+      /\.(md|markdown|txt|pdf|docx|xlsx)$/i.test(f.name),
     )
     if (!files.length) {
-      setStatus('仅支持 .md / .txt / .pdf')
+      setStatus('仅支持 .md / .txt / .pdf / .docx / .xlsx')
       return
     }
     setBusy(true)
@@ -400,7 +400,7 @@ function LibraryPanel({
       <div className="panel__head">
         <div>
           <h2>资料库</h2>
-          <p>放入 Markdown、TXT 或 PDF，系统会切段并建立检索索引。</p>
+          <p>放入 Markdown、TXT、PDF、Word（.docx）或 Excel（.xlsx），系统会切段并建立检索索引。</p>
         </div>
         <div className="panel__actions">
           <button
@@ -423,7 +423,7 @@ function LibraryPanel({
             {busy ? '处理中…' : '上传文档'}
             <input
               type="file"
-              accept=".md,.markdown,.txt,.pdf"
+              accept=".md,.markdown,.txt,.pdf,.docx,.xlsx"
               multiple
               hidden
               disabled={busy}

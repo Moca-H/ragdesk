@@ -2,7 +2,7 @@
 
 可切换 Provider 的**本地知识库问答**（RAG）。
 
-上传 Markdown / TXT / PDF → 切分向量化 → 对话，并展示检索引用。
+上传 Markdown / TXT / PDF / Word（.docx）/ Excel（.xlsx）→ 切分向量化 → 对话，并展示检索引用。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

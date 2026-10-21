@@ -20,6 +20,45 @@ from app.services.vector_store import (
 EmitFn = Callable[[str], Awaitable[None]]
 
 
+def _read_docx(path: Path) -> str:
+    from docx import Document
+
+    doc = Document(str(path))
+    parts: list[str] = []
+    for para in doc.paragraphs:
+        text = (para.text or "").strip()
+        if text:
+            parts.append(text)
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [(cell.text or "").strip() for cell in row.cells]
+            line = " | ".join(c for c in cells if c)
+            if line:
+                parts.append(line)
+    return "\n".join(parts).strip()
+
+
+def _read_xlsx(path: Path) -> str:
+    from openpyxl import load_workbook
+
+    wb = load_workbook(str(path), read_only=True, data_only=True)
+    parts: list[str] = []
+    try:
+        for sheet in wb.worksheets:
+            parts.append(f"# {sheet.title}")
+            for row in sheet.iter_rows(values_only=True):
+                cells = [
+                    "" if cell is None else str(cell).strip() for cell in row
+                ]
+                if not any(cells):
+                    continue
+                parts.append("\t".join(cells))
+            parts.append("")
+    finally:
+        wb.close()
+    return "\n".join(parts).strip()
+
+
 def _read_text(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix in {".md", ".txt", ".markdown"}:
@@ -30,6 +69,10 @@ def _read_text(path: Path) -> str:
         for page in reader.pages:
             parts.append(page.extract_text() or "")
         return "\n".join(parts).strip()
+    if suffix == ".docx":
+        return _read_docx(path)
+    if suffix == ".xlsx":
+        return _read_xlsx(path)
     raise ValueError(f"Unsupported file type: {suffix}")
 
 
