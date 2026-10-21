@@ -1,8 +1,15 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.models.schemas import DocumentInfo, ReindexResult
 from app.services import docs_meta
-from app.services.ingest import delete_document, ingest_upload, reindex_all
+from app.services.ingest import (
+    delete_document,
+    import_sample,
+    ingest_upload,
+    ingest_upload_stream,
+    reindex_all,
+)
 
 router = APIRouter(tags=["documents"])
 
@@ -33,12 +40,48 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentInfo:
     if suffix not in ALLOWED:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported type. Allowed: {', '.join(sorted(ALLOWED))}",
+            detail=f"不支持的文件类型。允许：{', '.join(sorted(ALLOWED))}",
         )
     content = await file.read()
     if not content:
-        raise HTTPException(status_code=400, detail="Empty file")
+        raise HTTPException(status_code=400, detail="文件为空")
     meta = await ingest_upload(name, content)
+    return _to_info(meta)
+
+
+@router.post("/api/documents/upload-stream")
+async def upload_document_stream(file: UploadFile = File(...)) -> StreamingResponse:
+    name = file.filename or "upload.bin"
+    suffix = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if suffix not in ALLOWED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件类型。允许：{', '.join(sorted(ALLOWED))}",
+        )
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="文件为空")
+
+    async def event_gen():
+        async for payload in ingest_upload_stream(name, content):
+            yield f"data: {payload}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/api/documents/sample", response_model=DocumentInfo)
+async def upload_sample() -> DocumentInfo:
+    try:
+        meta = await import_sample()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _to_info(meta)
 
 
@@ -57,5 +100,5 @@ async def reindex_documents() -> ReindexResult:
 async def remove_document(doc_id: str) -> dict[str, bool]:
     ok = await delete_document(doc_id)
     if not ok:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="文档不存在")
     return {"ok": True}

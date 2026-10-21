@@ -1,41 +1,110 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  createKnowledgeBase,
   deleteDocument,
   fetchProviderStatus,
   fetchSettings,
+  getActiveKbId,
+  importSampleDocument,
   listDocuments,
+  listKnowledgeBases,
   reindexDocuments,
   saveSettings,
+  setActiveKbId,
   streamChat,
-  uploadDocument,
+  uploadDocumentStream,
   type ChatMessage,
   type Citation,
   type DocumentInfo,
+  type KnowledgeBase,
   type ProviderName,
   type ProviderStatus,
   type Settings,
 } from './api'
 
-type Tab = 'library' | 'chat' | 'settings'
+type Tab = 'library' | 'chat' | 'eval' | 'settings'
+
+function chatHistoryKey() {
+  return `ragdesk:chat:v1:${getActiveKbId()}`
+}
+const EVAL_QUESTIONS = [
+  '这个项目是做什么的？',
+  '如何本地启动？',
+  '支持哪些模型 Provider？',
+]
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('library')
   const [settings, setSettings] = useState<Settings | null>(null)
   const [docs, setDocs] = useState<DocumentInfo[]>([])
+  const [kbs, setKbs] = useState<KnowledgeBase[]>([])
+  const [kbId, setKbId] = useState(getActiveKbId())
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
 
   async function refresh() {
-    const [s, d] = await Promise.all([fetchSettings(), listDocuments()])
+    const [s, d, kbList] = await Promise.all([
+      fetchSettings(),
+      listDocuments(),
+      listKnowledgeBases(),
+    ])
     setSettings(s)
     setDocs(d)
+    setKbs(kbList)
+    if (!kbList.some((k) => k.id === kbId) && kbList[0]) {
+      setActiveKbId(kbList[0].id)
+      setKbId(kbList[0].id)
+    }
   }
 
   useEffect(() => {
     void refresh().catch((err: Error) =>
       setStatus(err.message || 'Failed to load API'),
     )
+  }, [kbId])
+
+  // Read-only shared conversation snapshot from URL hash.
+  const shareMessages = useMemo(() => {
+    const hash = window.location.hash
+    if (!hash.startsWith('#share=')) return null
+    try {
+      const raw = decodeURIComponent(escape(atob(hash.slice(7))))
+      return JSON.parse(raw) as ChatMessage[]
+    } catch {
+      return []
+    }
   }, [])
+
+  if (shareMessages) {
+    return (
+      <div className="shell share-shell">
+        <main className="stage share-stage">
+          <section className="panel">
+            <div className="panel__head">
+              <div>
+                <h2>分享的对话（只读）</h2>
+                <p>这是一个本地快照链接，不包含你的密钥与资料库。</p>
+              </div>
+            </div>
+            <div className="chat__thread">
+              {shareMessages.length === 0 ? (
+                <div className="empty">分享内容为空或已损坏。</div>
+              ) : (
+                shareMessages.map((m, idx) => (
+                  <article
+                    key={`${m.role}-${idx}`}
+                    className={m.role === 'user' ? 'bubble bubble--user' : 'bubble'}
+                  >
+                    <p>{m.content}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="shell">
@@ -47,11 +116,47 @@ export default function App() {
           </h1>
           <p>把文档放进抽屉，再当面问它。</p>
         </div>
+        <div className="rail__kb">
+          <label>
+            <small>知识库</small>
+            <select
+              value={kbId}
+              onChange={(e) => {
+                setActiveKbId(e.target.value)
+                setKbId(e.target.value)
+              }}
+            >
+              {kbs.map((kb) => (
+                <option key={kb.id} value={kb.id}>
+                  {kb.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn btn--ghost rail__kb-add"
+            onClick={() => {
+              const name = window.prompt('新知识库名称')
+              if (!name) return
+              void createKnowledgeBase(name)
+                .then((kb) => {
+                  setActiveKbId(kb.id)
+                  setKbId(kb.id)
+                  setStatus(`已创建知识库：${kb.name}`)
+                })
+                .catch((err: Error) => setStatus(err.message))
+            }}
+          >
+            新建
+          </button>
+        </div>
         <nav className="rail__nav" aria-label="主导航">
           {(
             [
               ['library', '资料库'],
               ['chat', '对话'],
+              ['eval', '评测'],
               ['settings', '设置'],
             ] as const
           ).map(([id, label]) => (
@@ -96,8 +201,13 @@ export default function App() {
             />
           ) : null}
           {tab === 'chat' ? (
-            <ChatPanel setStatus={setStatus} provider={settings?.provider} />
+            <ChatPanel
+              kbId={kbId}
+              setStatus={setStatus}
+              provider={settings?.provider}
+            />
           ) : null}
+          {tab === 'eval' ? <EvalPanel setStatus={setStatus} /> : null}
           {tab === 'settings' ? (
             <SettingsPanel
               settings={settings}
@@ -124,23 +234,35 @@ function LibraryPanel({
   setStatus: (v: string) => void
   onChange: () => void
 }) {
-  async function onUpload(fileList: FileList | null) {
-    if (!fileList?.length) return
+  const [dragOver, setDragOver] = useState(false)
+  const [stageText, setStageText] = useState('')
+
+  async function ingestFiles(fileList: FileList | File[] | null) {
+    if (!fileList) return
+    const files = Array.from(fileList).filter((f) =>
+      /\.(md|markdown|txt|pdf)$/i.test(f.name),
+    )
+    if (!files.length) {
+      setStatus('仅支持 .md / .txt / .pdf')
+      return
+    }
     setBusy(true)
     try {
-      for (const file of Array.from(fileList)) {
-        const doc = await uploadDocument(file)
-        if (doc.status === 'error') {
-          setStatus(`${doc.filename}: ${doc.error || 'ingest failed'}`)
-        } else {
-          setStatus(`已入库：${doc.filename}（${doc.chunk_count} chunks）`)
-        }
+      for (const file of files) {
+        setStageText(`${file.name}：准备上传`)
+        await uploadDocumentStream(file, (event) => {
+          if (event.type === 'stage') {
+            setStageText(`${file.name}：${event.detail || event.stage}`)
+          }
+        })
       }
+      setStatus(`已处理 ${files.length} 个文件`)
       onChange()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setBusy(false)
+      setStageText('')
     }
   }
 
@@ -178,6 +300,19 @@ function LibraryPanel({
     }
   }
 
+  async function onSample() {
+    setBusy(true)
+    try {
+      const doc = await importSampleDocument()
+      setStatus(`已导入示例：${doc.filename}`)
+      onChange()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Sample import failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel__head">
@@ -186,6 +321,14 @@ function LibraryPanel({
           <p>放入 Markdown、TXT 或 PDF，系统会切段并建立检索索引。</p>
         </div>
         <div className="panel__actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={busy}
+            onClick={() => void onSample()}
+          >
+            导入示例
+          </button>
           <button
             type="button"
             className="btn btn--ghost"
@@ -203,7 +346,7 @@ function LibraryPanel({
               hidden
               disabled={busy}
               onChange={(e) => {
-                void onUpload(e.target.files)
+                void ingestFiles(e.target.files)
                 e.target.value = ''
               }}
             />
@@ -211,10 +354,30 @@ function LibraryPanel({
         </div>
       </div>
 
+      <div
+        className={dragOver ? 'dropzone is-active' : 'dropzone'}
+        onDragEnter={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragOver(false)
+          void ingestFiles(e.dataTransfer.files)
+        }}
+      >
+        {stageText || '把文件拖到这里，或点右上角上传'}
+      </div>
+
       {docs.length === 0 ? (
         <div className="empty">
           <strong>抽屉还是空的</strong>
-          <p>上传一份说明文档，再去对话页提问。</p>
+          <p>先导入示例，或上传一份说明文档。</p>
         </div>
       ) : (
         <ul className="doc-list">
@@ -226,7 +389,9 @@ function LibraryPanel({
                 <span>
                   {d.status === 'ready'
                     ? `${d.chunk_count} 段 / ${(d.size / 1024).toFixed(1)} KB`
-                    : d.error || '入库失败'}
+                    : d.status === 'processing'
+                      ? '处理中…'
+                      : d.error || '入库失败'}
                 </span>
               </div>
               <button
@@ -246,42 +411,70 @@ function LibraryPanel({
 }
 
 function ChatPanel({
+  kbId,
   setStatus,
   provider,
 }: {
+  kbId: string
   setStatus: (v: string) => void
   provider?: ProviderName
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem(chatHistoryKey())
+      return raw ? (JSON.parse(raw) as ChatMessage[]) : []
+    } catch {
+      return []
+    }
+  })
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [mode, setMode] = useState<'rag' | 'agent'>('rag')
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null)
+  const [stage, setStage] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
+  const lastUserRef = useRef('')
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(chatHistoryKey())
+      setMessages(raw ? (JSON.parse(raw) as ChatMessage[]) : [])
+    } catch {
+      setMessages([])
+    }
+    setActiveCitation(null)
+    lastUserRef.current = ''
+  }, [kbId])
+
+  useEffect(() => {
+    localStorage.setItem(chatHistoryKey(), JSON.stringify(messages))
+  }, [messages, kbId])
 
   const canSend = useMemo(
     () => input.trim().length > 0 && !streaming,
     [input, streaming],
   )
 
-  async function send() {
-    const text = input.trim()
-    if (!text || streaming) return
-    const nextMessages: ChatMessage[] = [
-      ...messages,
-      { role: 'user', content: text },
-    ]
-    setMessages([...nextMessages, { role: 'assistant', content: '', citations: [] }])
-    setInput('')
+  async function runChat(history: ChatMessage[]) {
     setStreaming(true)
     setStatus('')
-
+    setStage('')
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
-      let citations: Citation[] = []
       await streamChat(
-        nextMessages.map((m) => ({ role: m.role, content: m.content })),
+        history.map((m) => ({ role: m.role, content: m.content })),
         4,
         (event) => {
+          if (event.type === 'stage') {
+            setStage(
+              (event as { detail?: string }).detail ||
+                (event as { stage?: string }).stage ||
+                '',
+            )
+          }
           if (event.type === 'citations' && event.citations) {
-            citations = event.citations
+            const citations = event.citations
             setMessages((prev) => {
               const copy = [...prev]
               const last = copy[copy.length - 1]
@@ -305,12 +498,51 @@ function ChatPanel({
             })
           }
         },
+        controller.signal,
+        mode,
       )
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Chat failed')
+      if ((err as Error).name === 'AbortError') {
+        setStatus('已停止生成')
+      } else {
+        setStatus(err instanceof Error ? err.message : 'Chat failed')
+      }
     } finally {
       setStreaming(false)
+      abortRef.current = null
+      setStage('')
     }
+  }
+
+  async function send() {
+    const text = input.trim()
+    if (!text || streaming) return
+    lastUserRef.current = text
+    const nextMessages: ChatMessage[] = [
+      ...messages,
+      { role: 'user', content: text },
+    ]
+    setMessages([...nextMessages, { role: 'assistant', content: '', citations: [] }])
+    setInput('')
+    await runChat(nextMessages)
+  }
+
+  async function retryLast() {
+    const text = lastUserRef.current
+    if (!text || streaming) return
+    const withoutTail = [...messages]
+    while (withoutTail.length && withoutTail[withoutTail.length - 1].role === 'assistant') {
+      withoutTail.pop()
+    }
+    if (withoutTail[withoutTail.length - 1]?.role === 'user') {
+      withoutTail.pop()
+    }
+    const nextMessages: ChatMessage[] = [
+      ...withoutTail,
+      { role: 'user', content: text },
+    ]
+    setMessages([...nextMessages, { role: 'assistant', content: '', citations: [] }])
+    await runChat(nextMessages)
   }
 
   return (
@@ -320,19 +552,46 @@ function ChatPanel({
           <h2>对话</h2>
           <p>
             正在使用 <strong>{provider ?? '…'}</strong>
-            ，回答会标出引用片段。
+            {stage ? ` · ${stage}` : ''}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn--ghost"
-          onClick={() => {
-            setMessages([])
-            setActiveCitation(null)
-          }}
-        >
-          清空对话
-        </button>
+        <div className="panel__actions">
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as 'rag' | 'agent')}
+            disabled={streaming}
+          >
+            <option value="rag">直接检索</option>
+            <option value="agent">Agent（先改写再检索）</option>
+          </select>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={!streaming}
+            onClick={() => abortRef.current?.abort()}
+          >
+            停止
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={streaming || !lastUserRef.current}
+            onClick={() => void retryLast()}
+          >
+            重试
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              setMessages([])
+              setActiveCitation(null)
+              localStorage.removeItem(chatHistoryKey())
+            }}
+          >
+            清空对话
+          </button>
+        </div>
       </div>
 
       <div className="chat__thread">
@@ -361,6 +620,7 @@ function ChatPanel({
                       onClick={() => setActiveCitation(c)}
                     >
                       {c.filename}
+                      {c.chunk_index != null ? ` #${c.chunk_index}` : ''}
                     </button>
                   ))}
                 </div>
@@ -373,7 +633,12 @@ function ChatPanel({
       {activeCitation ? (
         <aside className="cite-panel">
           <div className="cite-panel__head">
-            <strong>{activeCitation.filename}</strong>
+            <strong>
+              {activeCitation.filename}
+              {activeCitation.chunk_index != null
+                ? ` · 片段 ${activeCitation.chunk_index}`
+                : ''}
+            </strong>
             <button
               type="button"
               className="btn btn--ghost"
@@ -407,6 +672,83 @@ function ChatPanel({
   )
 }
 
+function EvalPanel({ setStatus }: { setStatus: (v: string) => void }) {
+  const [running, setRunning] = useState(false)
+  const [rows, setRows] = useState<
+    { question: string; answer: string; citations: Citation[] }[]
+  >([])
+
+  async function runEval() {
+    setRunning(true)
+    setRows([])
+    setStatus('评测开始…')
+    try {
+      const next: { question: string; answer: string; citations: Citation[] }[] =
+        []
+      for (const question of EVAL_QUESTIONS) {
+        let answer = ''
+        let citations: Citation[] = []
+        await streamChat(
+          [{ role: 'user', content: question }],
+          4,
+          (event) => {
+            if (event.type === 'citations' && event.citations) {
+              citations = event.citations
+            }
+            if (event.type === 'token' && event.content) {
+              answer += event.content
+            }
+          },
+          undefined,
+          'rag',
+        )
+        next.push({ question, answer, citations })
+        setRows([...next])
+      }
+      setStatus(`评测完成：${next.length} 题`)
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Eval failed')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <section className="panel">
+      <div className="panel__head">
+        <div>
+          <h2>评测</h2>
+          <p>用固定问题集快速对比当前知识库与模型效果。</p>
+        </div>
+        <button
+          type="button"
+          className="btn btn--primary"
+          disabled={running}
+          onClick={() => void runEval()}
+        >
+          {running ? '评测中…' : '跑一遍评测'}
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <div className="empty">
+          <strong>还没有评测结果</strong>
+          <p>先确保资料库有文档，再点右上角开始。</p>
+        </div>
+      ) : (
+        <div className="eval-list">
+          {rows.map((row) => (
+            <article key={row.question} className="eval-card">
+              <h3>{row.question}</h3>
+              <p>{row.answer || '（无回答）'}</p>
+              <small>{row.citations.length} 条引用</small>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function SettingsPanel({
   settings,
   setSettings,
@@ -424,6 +766,7 @@ function SettingsPanel({
   const [saving, setSaving] = useState(false)
   const [probing, setProbing] = useState(false)
   const [probe, setProbe] = useState<ProviderStatus | null>(null)
+  const [shareUrl, setShareUrl] = useState('')
 
   useEffect(() => {
     if (!settings) return
@@ -461,7 +804,6 @@ function SettingsPanel({
   async function onProbe() {
     setProbing(true)
     try {
-      // Persist draft settings first so probe uses the values on screen.
       await saveSettings({
         provider,
         base_url: baseUrl,
@@ -480,6 +822,17 @@ function SettingsPanel({
     }
   }
 
+  function makeShareLink() {
+    const raw = localStorage.getItem(chatHistoryKey()) || '[]'
+    const encoded = btoa(unescape(encodeURIComponent(raw)))
+    const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`
+    setShareUrl(url)
+    void navigator.clipboard.writeText(url).then(
+      () => setStatus('只读分享链接已复制（含当前对话快照）'),
+      () => setStatus('已生成分享链接，可手动复制'),
+    )
+  }
+
   return (
     <section className="panel">
       <div className="panel__head">
@@ -490,6 +843,13 @@ function SettingsPanel({
           </p>
         </div>
         <div className="panel__actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={makeShareLink}
+          >
+            复制对话分享链接
+          </button>
           <button
             type="button"
             className="btn btn--ghost"
@@ -513,6 +873,13 @@ function SettingsPanel({
         <div className={probe.ok ? 'probe probe--ok' : 'probe probe--bad'}>
           <strong>{probe.ok ? '已连通' : '未连通'}</strong>
           <span>{probe.message}</span>
+        </div>
+      ) : null}
+
+      {shareUrl ? (
+        <div className="probe">
+          <strong>分享链接</strong>
+          <span className="share-url">{shareUrl}</span>
         </div>
       ) : null}
 

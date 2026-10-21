@@ -1,19 +1,20 @@
 import json
 from typing import Any
 
-from app.paths import DOCS_META_PATH, ensure_data_dirs
+from app.paths import docs_meta_path, ensure_data_dirs
 
 
 def load_docs() -> list[dict[str, Any]]:
     ensure_data_dirs()
-    if not DOCS_META_PATH.exists():
+    path = docs_meta_path()
+    if not path.exists():
         return []
-    return json.loads(DOCS_META_PATH.read_text(encoding="utf-8"))
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def save_docs(docs: list[dict[str, Any]]) -> None:
     ensure_data_dirs()
-    DOCS_META_PATH.write_text(
+    docs_meta_path().write_text(
         json.dumps(docs, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 

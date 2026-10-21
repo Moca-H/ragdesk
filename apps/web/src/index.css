@@ -131,6 +131,35 @@ select:focus-visible {
   text-wrap: pretty;
 }
 
+.rail__kb {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.rail__kb label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.rail__kb small {
+  color: var(--rail-muted);
+  font-size: 0.78rem;
+}
+
+.rail__kb select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--rail-ink);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.65rem;
+}
+
+.rail__kb-add {
+  color: var(--rail-ink) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
 .rail__nav {
   display: grid;
   gap: 0.2rem;
@@ -335,6 +364,63 @@ select:focus-visible {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+}
+
+.panel__actions select {
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.7rem;
+}
+
+.dropzone {
+  border: 1.5px dashed var(--rule);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  text-align: center;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--blotter) 40%, var(--surface));
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.dropzone.is-active {
+  border-color: var(--brass);
+  background: var(--brass-soft);
+  color: var(--ink);
+}
+
+.eval-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.eval-card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+}
+
+.eval-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+}
+
+.eval-card p {
+  margin: 0 0 0.4rem;
+  white-space: pre-wrap;
+}
+
+.eval-card small {
+  color: var(--muted);
+}
+
+.share-url {
+  word-break: break-all;
+  font-size: 0.82rem !important;
 }
 
 .probe {
@@ -595,6 +681,15 @@ select:focus-visible {
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
   font-size: 0.95rem;
   line-height: 1.7;
+}
+
+.share-shell .stage {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.share-stage {
+  padding: 2rem 1.25rem;
 }
 
 .composer {

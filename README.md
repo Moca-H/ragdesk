@@ -4,13 +4,28 @@
 
 上传 Markdown / TXT / PDF → 切分向量化 → 对话，并展示检索引用。
 
-- **前端**：Vite + React + TypeScript  
-- **后端**：FastAPI + Chroma  
-- **Provider**：`mock`（开箱演示） / `openai_compat`（OpenAI、DeepSeek 等） / `ollama`
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+```text
+┌────────────┐     ┌──────────────────────────────┐
+│  React UI  │────▶│  FastAPI  ·  Chroma  · LLM   │
+│  资料/对话  │◀────│  mock / OpenAI兼容 / Ollama  │
+└────────────┘     └──────────────────────────────┘
+```
+
+## 功能概览
+
+- 多知识库隔离
+- 上传进度（解析 / 切分 / 向量化）与可读错误
+- 拖拽上传、示例一键导入、重建索引
+- 混合检索（向量 + BM25）
+- Agent 模式（先改写问题再检索）
+- 对话停止 / 重试、本地历史、只读分享链接
+- Provider 连通检测与模型建议
+- 评测小面板
+- Windows 一键启动 / Docker Compose
 
 ## 快速开始（Windows 一键）
-
-在项目根目录执行任一方式：
 
 ```powershell
 .\dev.cmd
@@ -22,61 +37,40 @@
 npm run dev
 ```
 
-或：
-
-```powershell
-.\scripts\dev.ps1
-```
-
-脚本会自动：
-
-1. 准备 Python 虚拟环境 / 安装依赖（仅首次）
-2. 安装前端依赖（仅首次）
-3. 同时启动 API（8000）和 Web（5173）
-4. 打开浏览器
-
 页面：http://127.0.0.1:5173  
 
-默认 Provider 为 **mock**，无需 Key 即可体验。
+默认 Provider 为 **mock**，无需 Key。
 
-### 分开启动（可选）
-
-```powershell
-npm run dev:api
-npm run dev:web
-```
-
-### Docker 一键
-
-需要本机已安装 Docker Desktop：
+### Docker
 
 ```bash
 docker compose up --build
 ```
 
-浏览器打开 http://127.0.0.1:8080  
-
-数据持久化在 Docker volume `ragdesk-data`。
+打开 http://127.0.0.1:8080  
 
 ## 切换真实模型
 
-在「设置」页：
+在「设置」页配置 Provider，点「检测连通」：
 
 | Provider | Base URL 示例 | Chat / Embedding 示例 |
 |----------|---------------|------------------------|
-| openai_compat | `https://api.openai.com/v1` 或 DeepSeek 兼容地址 | `gpt-4o-mini` / `text-embedding-3-small` |
+| openai_compat | `https://api.openai.com/v1` | `gpt-4o-mini` / `text-embedding-3-small` |
 | ollama | `http://127.0.0.1:11434` | `llama3.2` / `nomic-embed-text` |
 
-API Key 保存在本机 `apps/api/data/config.json`，不会提交到 Git。
+更换 Embedding 后请在资料库点「重建索引」。
 
-切换 Embedding 模型后，如检索异常，请重新上传文档以重建索引。
+## API 摘要
 
-## API
-
-- `GET /api/health`
+- `GET/POST /api/kbs`
 - `GET/PUT /api/settings`
-- `GET/POST/DELETE /api/documents`
-- `POST /api/chat`（SSE：`citations` / `token` / `done`）
+- `GET /api/provider/status`
+- `POST /api/documents/upload-stream`（SSE 进度）
+- `POST /api/documents/sample`
+- `POST /api/documents/reindex`
+- `POST /api/chat`（SSE，`mode=rag|agent`）
+
+请求头 `X-Ragdesk-KB` 指定知识库（默认 `default`）。
 
 ## 目录
 
@@ -84,6 +78,8 @@ API Key 保存在本机 `apps/api/data/config.json`，不会提交到 Git。
 apps/
   api/   FastAPI + Chroma + Providers
   web/   React 工作台
+scripts/dev.ps1
+docker-compose.yml
 ```
 
 ## License
@@ -94,4 +90,4 @@ MIT
 
 ## English
 
-Self-hosted RAG desk with pluggable providers (`mock`, OpenAI-compatible, Ollama), document ingest, and citation-aware chat streaming.
+Self-hosted RAG desk with multi knowledge bases, hybrid retrieval, agent rewrite mode, provider probing, eval panel, and one-click local/Docker startup.
