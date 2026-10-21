@@ -231,13 +231,43 @@ select.field--light option,
   font-weight: 600 !important;
 }
 
-.desk-select__input {
+.desk-select__input,
+.desk-field__input {
   font-weight: 600 !important;
-  min-height: 2.45rem !important;
+  height: 2.5rem !important;
+  min-height: 2.5rem !important;
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
     box-shadow 160ms ease !important;
+}
+
+.desk-field__root {
+  width: 100%;
+}
+
+.desk-field__label,
+.desk-select--light .desk-select__label {
+  color: var(--muted) !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.desk-field__input {
+  background: #fffdf8 !important;
+  border: 1px solid var(--rule) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset !important;
+}
+
+.desk-field__input:hover {
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--rule)) !important;
+}
+
+.desk-field__input:focus {
+  border-color: var(--brass) !important;
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18) !important;
 }
 
 .desk-select--dark .desk-select__input {
@@ -327,12 +357,13 @@ select.field--light option,
   color: var(--brass-deep) !important;
 }
 
-.form-grid .desk-select-field {
-  display: block;
-}
-
+.form-grid .desk-field,
 .form-grid .desk-select__root {
   width: 100%;
+}
+
+.form-grid .span-2 {
+  grid-column: 1 / -1;
 }
 
 .rail__nav {
@@ -905,27 +936,23 @@ select.field--light option,
   padding-top: 0.25rem;
 }
 
-.composer input,
-.form-grid input,
-.form-grid select {
+.composer input {
   width: 100%;
+  height: 2.5rem;
   border: 1px solid var(--rule);
   background: #fffdf8;
   color: var(--ink);
   border-radius: var(--radius);
-  padding: 0.72rem 0.85rem;
+  padding: 0 0.85rem;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease;
 }
 
-.form-grid select {
-  padding-right: 2.1rem;
-}
-
 .composer .btn {
-  min-height: 2.85rem;
+  min-height: 2.5rem;
+  height: 2.5rem;
   padding-inline: 1.15rem;
 }
 
@@ -933,21 +960,7 @@ select.field--light option,
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.9rem;
-}
-
-.form-grid label {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.form-grid label span {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.span-2 {
-  grid-column: 1 / -1;
+  align-items: start;
 }
 
 @media (max-width: 860px) {

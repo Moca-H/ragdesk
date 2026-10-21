@@ -1,4 +1,4 @@
-import { Modal, Text, TextInput } from '@mantine/core'
+import { Modal, Text, TextInput as MantineTextInput } from '@mantine/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createKnowledgeBase,
@@ -254,7 +254,7 @@ export default function App() {
         <Text size="sm" mb="sm">
           为不同主题或项目单独开一个抽屉，资料互不影响。
         </Text>
-        <TextInput
+        <MantineTextInput
           label="名称"
           placeholder="例如：产品手册 / 论文笔记"
           value={newKbName}
@@ -999,7 +999,7 @@ function SettingsPanel({
       ) : null}
 
       <div className="form-grid">
-        <label className="desk-select-field">
+        <div className="desk-field">
           <DeskSelect
             tone="light"
             label="Provider"
@@ -1015,59 +1015,81 @@ function SettingsPanel({
             ]}
             onChange={(v) => setProvider(v as ProviderName)}
           />
-        </label>
-        <label>
-          <span>Base URL</span>
-          <input
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder={
-              provider === 'ollama'
-                ? 'http://127.0.0.1:11434'
-                : 'https://api.openai.com/v1'
-            }
-          />
-        </label>
-        <label>
-          <span>Chat Model</span>
-          <input
-            list="chat-model-options"
-            value={chatModel}
-            onChange={(e) => setChatModel(e.target.value)}
-            placeholder="gpt-4o-mini / llama3.2"
-          />
-          <datalist id="chat-model-options">
-            {(probe?.chat_models ?? []).map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-        </label>
-        <label>
-          <span>Embedding Model</span>
-          <input
-            list="embed-model-options"
-            value={embeddingModel}
-            onChange={(e) => setEmbeddingModel(e.target.value)}
-            placeholder="text-embedding-3-small / nomic-embed-text"
-          />
-          <datalist id="embed-model-options">
-            {(probe?.embedding_models ?? []).map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-        </label>
-        <label className="span-2">
-          <span>
-            API Key {settings?.api_key_set ? '（已设置，留空则保持不变）' : ''}
-          </span>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
-            autoComplete="off"
-          />
-        </label>
+        </div>
+        <MantineTextInput
+          className="desk-field"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label="Base URL"
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.currentTarget.value)}
+          placeholder={
+            provider === 'ollama'
+              ? 'http://127.0.0.1:11434'
+              : 'https://api.openai.com/v1'
+          }
+          size="md"
+        />
+        <MantineTextInput
+          className="desk-field"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label="Chat Model"
+          list="chat-model-options"
+          value={chatModel}
+          onChange={(e) => setChatModel(e.currentTarget.value)}
+          placeholder="gpt-4o-mini / llama3.2"
+          size="md"
+        />
+        <datalist id="chat-model-options">
+          {(probe?.chat_models ?? []).map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+        <MantineTextInput
+          className="desk-field"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label="Embedding Model"
+          list="embed-model-options"
+          value={embeddingModel}
+          onChange={(e) => setEmbeddingModel(e.currentTarget.value)}
+          placeholder="text-embedding-3-small / nomic-embed-text"
+          size="md"
+        />
+        <datalist id="embed-model-options">
+          {(probe?.embedding_models ?? []).map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+        <MantineTextInput
+          className="desk-field span-2"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label={
+            settings?.api_key_set
+              ? 'API Key（已设置，留空则保持不变）'
+              : 'API Key'
+          }
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.currentTarget.value)}
+          placeholder="sk-..."
+          autoComplete="off"
+          size="md"
+        />
       </div>
     </section>
   )
