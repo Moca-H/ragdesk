@@ -1,8 +1,9 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 from app.models.schemas import DocumentInfo, ReindexResult
-from app.services import docs_meta
+from app.services import docs_meta, kb_store
 from app.services.ingest import (
     delete_document,
     import_sample,
@@ -10,6 +11,8 @@ from app.services.ingest import (
     ingest_upload_stream,
     reindex_all,
 )
+from app.services.kb_context import get_kb_id
+from app.services.url_fetch import fetch_url_text
 
 router = APIRouter(tags=["documents"])
 
@@ -28,6 +31,24 @@ def _to_info(d: dict) -> DocumentInfo:
     )
 
 
+def _ensure_writable() -> None:
+    if kb_store.is_readonly(get_kb_id()):
+        raise HTTPException(status_code=403, detail="当前知识库为只读，无法修改资料")
+
+
+class TextIngest(BaseModel):
+    content: str = Field(min_length=1)
+    filename: str = "note.md"
+
+
+class UrlIngest(BaseModel):
+    url: str = Field(min_length=8)
+
+
+class BatchDelete(BaseModel):
+    ids: list[str] = Field(min_length=1)
+
+
 @router.get("/api/documents", response_model=list[DocumentInfo])
 async def list_documents() -> list[DocumentInfo]:
     return [_to_info(d) for d in docs_meta.load_docs()]
@@ -35,6 +56,7 @@ async def list_documents() -> list[DocumentInfo]:
 
 @router.post("/api/documents", response_model=DocumentInfo)
 async def upload_document(file: UploadFile = File(...)) -> DocumentInfo:
+    _ensure_writable()
     name = file.filename or "upload.bin"
     suffix = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     if suffix not in ALLOWED:
@@ -51,6 +73,7 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentInfo:
 
 @router.post("/api/documents/upload-stream")
 async def upload_document_stream(file: UploadFile = File(...)) -> StreamingResponse:
+    _ensure_writable()
     name = file.filename or "upload.bin"
     suffix = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     if suffix not in ALLOWED:
@@ -76,8 +99,32 @@ async def upload_document_stream(file: UploadFile = File(...)) -> StreamingRespo
     )
 
 
+@router.post("/api/documents/text", response_model=DocumentInfo)
+async def ingest_text(body: TextIngest) -> DocumentInfo:
+    _ensure_writable()
+    name = body.filename.strip() or "note.md"
+    if "." not in name:
+        name = f"{name}.md"
+    meta = await ingest_upload(name, body.content.encode("utf-8"))
+    return _to_info(meta)
+
+
+@router.post("/api/documents/url", response_model=DocumentInfo)
+async def ingest_url(body: UrlIngest) -> DocumentInfo:
+    _ensure_writable()
+    try:
+        filename, text = await fetch_url_text(body.url.strip())
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"抓取失败：{exc}") from exc
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="页面没有可读文本")
+    meta = await ingest_upload(filename, text.encode("utf-8"))
+    return _to_info(meta)
+
+
 @router.post("/api/documents/sample", response_model=DocumentInfo)
 async def upload_sample() -> DocumentInfo:
+    _ensure_writable()
     try:
         meta = await import_sample()
     except FileNotFoundError as exc:
@@ -87,6 +134,7 @@ async def upload_sample() -> DocumentInfo:
 
 @router.post("/api/documents/reindex", response_model=ReindexResult)
 async def reindex_documents() -> ReindexResult:
+    _ensure_writable()
     result = await reindex_all()
     return ReindexResult(
         total=result["total"],
@@ -96,8 +144,19 @@ async def reindex_documents() -> ReindexResult:
     )
 
 
+@router.post("/api/documents/delete-batch")
+async def delete_documents_batch(body: BatchDelete) -> dict:
+    _ensure_writable()
+    deleted = 0
+    for doc_id in body.ids:
+        if await delete_document(doc_id):
+            deleted += 1
+    return {"ok": True, "deleted": deleted, "requested": len(body.ids)}
+
+
 @router.delete("/api/documents/{doc_id}")
 async def remove_document(doc_id: str) -> dict[str, bool]:
+    _ensure_writable()
     ok = await delete_document(doc_id)
     if not ok:
         raise HTTPException(status_code=404, detail="文档不存在")

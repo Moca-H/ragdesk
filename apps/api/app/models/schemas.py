@@ -20,6 +20,8 @@ class SettingsPublic(BaseModel):
     embedding_model: str
     api_key_set: bool
     has_documents: bool = False
+    settings_locked: bool = False
+    api_token_required: bool = False
 
 
 class DocumentInfo(BaseModel):

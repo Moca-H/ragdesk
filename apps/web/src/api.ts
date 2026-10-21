@@ -7,6 +7,8 @@ export type Settings = {
   embedding_model: string
   api_key_set: boolean
   has_documents: boolean
+  settings_locked?: boolean
+  api_token_required?: boolean
 }
 
 export type DocumentInfo = {
@@ -31,9 +33,35 @@ export type ChatMessage = {
   role: 'user' | 'assistant' | 'system'
   content: string
   citations?: Citation[]
+  rewriteQuery?: string
+}
+
+export type KnowledgeBase = { id: string; name: string; readonly?: boolean }
+
+export type WatchConfig = {
+  enabled: boolean
+  path: string
+  kb_id: string
+  poll_seconds: number
+}
+
+export type HealthDetail = {
+  status: string
+  provider: {
+    name: string
+    ok: boolean
+    error: string | null
+    chat_model: string
+    embedding_model: string
+  }
+  vector_store: { ok: boolean; chunk_count: number; error: string | null }
+  documents: { total: number; ready: number; error: number }
+  watch: WatchConfig
+  security: { api_token_required: boolean; settings_locked: boolean }
 }
 
 let activeKbId = localStorage.getItem('ragdesk:kb') || 'default'
+let apiToken = localStorage.getItem('ragdesk:apiToken') || ''
 
 export function getActiveKbId() {
   return activeKbId
@@ -42,6 +70,16 @@ export function getActiveKbId() {
 export function setActiveKbId(id: string) {
   activeKbId = id
   localStorage.setItem('ragdesk:kb', id)
+}
+
+export function getApiToken() {
+  return apiToken
+}
+
+export function setApiToken(token: string) {
+  apiToken = token.trim()
+  if (apiToken) localStorage.setItem('ragdesk:apiToken', apiToken)
+  else localStorage.removeItem('ragdesk:apiToken')
 }
 
 async function readError(res: Response): Promise<string> {
@@ -57,10 +95,9 @@ async function readError(res: Response): Promise<string> {
 async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {})
   headers.set('X-Ragdesk-KB', activeKbId)
+  if (apiToken) headers.set('Authorization', `Bearer ${apiToken}`)
   return fetch(input, { ...init, headers })
 }
-
-export type KnowledgeBase = { id: string; name: string }
 
 export async function listKnowledgeBases(): Promise<KnowledgeBase[]> {
   const res = await apiFetch('/api/kbs')
@@ -68,12 +105,48 @@ export async function listKnowledgeBases(): Promise<KnowledgeBase[]> {
   return res.json()
 }
 
-export async function createKnowledgeBase(name: string): Promise<KnowledgeBase> {
+export async function createKnowledgeBase(
+  name: string,
+  readonly = false,
+): Promise<KnowledgeBase> {
   const res = await apiFetch('/api/kbs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, readonly }),
   })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function setKnowledgeBaseReadonly(
+  id: string,
+  readonly: boolean,
+): Promise<KnowledgeBase> {
+  const res = await apiFetch(`/api/kbs/${id}/readonly`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ readonly }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function exportKnowledgeBase(id: string): Promise<Blob> {
+  const res = await apiFetch(`/api/kbs/${id}/export`)
+  if (!res.ok) throw new Error(await readError(res))
+  return res.blob()
+}
+
+export async function importKnowledgeBase(
+  file: File,
+  name?: string,
+): Promise<{ kb: KnowledgeBase; imported: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  const url = name
+    ? `/api/kbs/import?name=${encodeURIComponent(name)}`
+    : '/api/kbs/import'
+  const res = await apiFetch(url, { method: 'POST', body: form })
   if (!res.ok) throw new Error(await readError(res))
   return res.json()
 }
@@ -104,14 +177,6 @@ export async function saveSettings(
 
 export async function listDocuments(): Promise<DocumentInfo[]> {
   const res = await apiFetch('/api/documents')
-  if (!res.ok) throw new Error(await readError(res))
-  return res.json()
-}
-
-export async function uploadDocument(file: File): Promise<DocumentInfo> {
-  const form = new FormData()
-  form.append('file', file)
-  const res = await apiFetch('/api/documents', { method: 'POST', body: form })
   if (!res.ok) throw new Error(await readError(res))
   return res.json()
 }
@@ -164,6 +229,29 @@ export async function uploadDocumentStream(
   return result
 }
 
+export async function ingestTextDocument(
+  content: string,
+  filename = 'note.md',
+): Promise<DocumentInfo> {
+  const res = await apiFetch('/api/documents/text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, filename }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function ingestUrlDocument(url: string): Promise<DocumentInfo> {
+  const res = await apiFetch('/api/documents/url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
 export async function importSampleDocument(): Promise<DocumentInfo> {
   const res = await apiFetch('/api/documents/sample', { method: 'POST' })
   if (!res.ok) throw new Error(await readError(res))
@@ -173,6 +261,17 @@ export async function importSampleDocument(): Promise<DocumentInfo> {
 export async function deleteDocument(id: string): Promise<void> {
   const res = await apiFetch(`/api/documents/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function deleteDocumentsBatch(ids: string[]): Promise<number> {
+  const res = await apiFetch('/api/documents/delete-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  const data = (await res.json()) as { deleted: number }
+  return data.deleted
 }
 
 export type ReindexResult = {
@@ -203,6 +302,30 @@ export async function fetchProviderStatus(): Promise<ProviderStatus> {
   return res.json()
 }
 
+export async function fetchHealthDetail(): Promise<HealthDetail> {
+  const res = await apiFetch('/api/health/detail')
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function fetchWatchConfig(): Promise<WatchConfig> {
+  const res = await apiFetch('/api/watch')
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function saveWatchConfig(
+  body: Partial<WatchConfig>,
+): Promise<WatchConfig> {
+  const res = await apiFetch('/api/watch', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
 export async function streamChat(
   messages: { role: string; content: string }[],
   topK: number,
@@ -210,6 +333,8 @@ export async function streamChat(
     type: string
     content?: string
     citations?: Citation[]
+    stage?: string
+    detail?: string
   }) => void,
   signal?: AbortSignal,
   mode: 'rag' | 'agent' = 'rag',

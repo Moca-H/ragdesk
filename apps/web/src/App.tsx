@@ -3,30 +3,43 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createKnowledgeBase,
   deleteDocument,
+  deleteDocumentsBatch,
+  exportKnowledgeBase,
+  fetchHealthDetail,
   fetchProviderStatus,
   fetchSettings,
+  fetchWatchConfig,
   getActiveKbId,
+  getApiToken,
+  importKnowledgeBase,
   importSampleDocument,
+  ingestTextDocument,
+  ingestUrlDocument,
   listDocuments,
   listKnowledgeBases,
   reindexDocuments,
   saveSettings,
+  saveWatchConfig,
   setActiveKbId,
+  setApiToken,
+  setKnowledgeBaseReadonly,
   streamChat,
   uploadDocumentStream,
   type ChatMessage,
   type Citation,
   type DocumentInfo,
+  type HealthDetail,
   type KnowledgeBase,
   type ProviderName,
   type ProviderStatus,
   type Settings,
+  type WatchConfig,
 } from './api'
 import { DeskConfirm } from './DeskConfirm'
 import { DeskSelect } from './DeskSelect'
 import './DeskModal.css'
 
-type Tab = 'library' | 'chat' | 'eval' | 'settings'
+type Tab = 'library' | 'chat' | 'eval' | 'health' | 'settings'
 
 function chatHistoryKey() {
   return `ragdesk:chat:v1:${getActiveKbId()}`
@@ -180,6 +193,7 @@ export default function App() {
               ['library', '资料库'],
               ['chat', '对话'],
               ['eval', '评测'],
+              ['health', '健康'],
               ['settings', '设置'],
             ] as const
           ).map(([id, label]) => (
@@ -231,11 +245,15 @@ export default function App() {
             />
           ) : null}
           {tab === 'eval' ? <EvalPanel setStatus={setStatus} /> : null}
+          {tab === 'health' ? <HealthPanel setStatus={setStatus} /> : null}
           {tab === 'settings' ? (
             <SettingsPanel
               settings={settings}
               setSettings={setSettings}
               setStatus={setStatus}
+              kbs={kbs}
+              kbId={kbId}
+              onKbMeta={() => void refresh()}
             />
           ) : null}
         </main>
@@ -306,10 +324,17 @@ function LibraryPanel({
 }) {
   const [dragOver, setDragOver] = useState(false)
   const [stageText, setStageText] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [pasteName, setPasteName] = useState('note.md')
+  const [urlOpen, setUrlOpen] = useState(false)
+  const [urlValue, setUrlValue] = useState('')
   const [confirm, setConfirm] = useState<
     | null
     | { kind: 'delete'; id: string; name: string }
     | { kind: 'reindex' }
+    | { kind: 'batch' }
   >(null)
 
   async function ingestFiles(fileList: FileList | File[] | null) {
@@ -362,6 +387,10 @@ function LibraryPanel({
       if (current.kind === 'delete') {
         await deleteDocument(current.id)
         setStatus(`已删除 ${current.name}`)
+      } else if (current.kind === 'batch') {
+        const n = await deleteDocumentsBatch(selected)
+        setSelected([])
+        setStatus(`已批量删除 ${n} 份文档`)
       } else {
         const result = await reindexDocuments()
         setStatus(
@@ -370,13 +399,39 @@ function LibraryPanel({
       }
       onChange()
     } catch (err) {
-      setStatus(
-        err instanceof Error
-          ? err.message
-          : current.kind === 'delete'
-            ? 'Delete failed'
-            : 'Reindex failed',
-      )
+      setStatus(err instanceof Error ? err.message : '操作失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitPaste() {
+    if (!pasteText.trim()) return
+    setBusy(true)
+    try {
+      const doc = await ingestTextDocument(pasteText, pasteName || 'note.md')
+      setStatus(`已入库文本：${doc.filename}`)
+      setPasteOpen(false)
+      setPasteText('')
+      onChange()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : '粘贴入库失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitUrl() {
+    if (!urlValue.trim()) return
+    setBusy(true)
+    try {
+      const doc = await ingestUrlDocument(urlValue.trim())
+      setStatus(`已抓取入库：${doc.filename}`)
+      setUrlOpen(false)
+      setUrlValue('')
+      onChange()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'URL 入库失败')
     } finally {
       setBusy(false)
     }
@@ -407,6 +462,22 @@ function LibraryPanel({
             type="button"
             className="btn btn--ghost"
             disabled={busy}
+            onClick={() => setPasteOpen(true)}
+          >
+            粘贴入库
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={busy}
+            onClick={() => setUrlOpen(true)}
+          >
+            URL 入库
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={busy}
             onClick={() => void onSample()}
           >
             导入示例
@@ -419,6 +490,30 @@ function LibraryPanel({
           >
             重建索引
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--danger"
+            disabled={busy || selected.length === 0}
+            onClick={() => setConfirm({ kind: 'batch' })}
+          >
+            批量删除 ({selected.length})
+          </button>
+          <label className={`btn btn--ghost ${busy ? 'is-disabled' : ''}`}>
+            选文件夹
+            <input
+              type="file"
+              multiple
+              // @ts-expect-error webkitdirectory is non-standard but widely supported
+              webkitdirectory=""
+              directory=""
+              hidden
+              disabled={busy}
+              onChange={(e) => {
+                void ingestFiles(e.target.files)
+                e.target.value = ''
+              }}
+            />
+          </label>
           <label className={`btn btn--primary ${busy ? 'is-disabled' : ''}`}>
             {busy ? '处理中…' : '上传文档'}
             <input
@@ -465,6 +560,19 @@ function LibraryPanel({
         <ul className="doc-list">
           {docs.map((d) => (
             <li key={d.id} className="doc-item">
+              <label className="doc-item__check">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(d.id)}
+                  onChange={(e) => {
+                    setSelected((prev) =>
+                      e.target.checked
+                        ? [...prev, d.id]
+                        : prev.filter((id) => id !== d.id),
+                    )
+                  }}
+                />
+              </label>
               <div className="doc-item__tab" aria-hidden="true" />
               <div className="doc-item__body">
                 <strong>{d.filename}</strong>
@@ -489,18 +597,91 @@ function LibraryPanel({
         </ul>
       )}
 
+      <Modal
+        className="desk-modal"
+        opened={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        title="粘贴入库"
+        centered
+      >
+        <MantineTextInput
+          label="文件名"
+          value={pasteName}
+          onChange={(e) => setPasteName(e.currentTarget.value)}
+          mb="sm"
+        />
+        <textarea
+          className="desk-textarea"
+          rows={10}
+          value={pasteText}
+          onChange={(e) => setPasteText(e.target.value)}
+          placeholder="粘贴 Markdown / 纯文本…"
+        />
+        <div className="desk-modal__actions">
+          <button type="button" className="desk-modal__btn" onClick={() => setPasteOpen(false)}>
+            取消
+          </button>
+          <button
+            type="button"
+            className="desk-modal__btn desk-modal__btn--primary"
+            disabled={busy || !pasteText.trim()}
+            onClick={() => void submitPaste()}
+          >
+            入库
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        className="desk-modal"
+        opened={urlOpen}
+        onClose={() => setUrlOpen(false)}
+        title="URL 入库"
+        centered
+      >
+        <MantineTextInput
+          label="网页地址"
+          placeholder="https://..."
+          value={urlValue}
+          onChange={(e) => setUrlValue(e.currentTarget.value)}
+        />
+        <div className="desk-modal__actions">
+          <button type="button" className="desk-modal__btn" onClick={() => setUrlOpen(false)}>
+            取消
+          </button>
+          <button
+            type="button"
+            className="desk-modal__btn desk-modal__btn--primary"
+            disabled={busy || !urlValue.trim()}
+            onClick={() => void submitUrl()}
+          >
+            抓取并入库
+          </button>
+        </div>
+      </Modal>
+
       <DeskConfirm
         opened={confirm != null}
         onCancel={() => setConfirm(null)}
         onConfirm={() => void runConfirmed()}
-        title={confirm?.kind === 'delete' ? '删除文档' : '重建索引'}
+        title={
+          confirm?.kind === 'delete'
+            ? '删除文档'
+            : confirm?.kind === 'batch'
+              ? '批量删除'
+              : '重建索引'
+        }
         message={
           confirm?.kind === 'delete'
             ? `确定删除「${confirm.name}」？此操作不可撤销。`
-            : '按当前 Provider / Embedding 重建全部索引？'
+            : confirm?.kind === 'batch'
+              ? `确定删除选中的 ${selected.length} 份文档？`
+              : '按当前 Provider / Embedding 重建全部索引？'
         }
-        confirmLabel={confirm?.kind === 'delete' ? '删除' : '开始重建'}
-        danger={confirm?.kind === 'delete'}
+        confirmLabel={
+          confirm?.kind === 'reindex' ? '开始重建' : '删除'
+        }
+        danger={confirm?.kind !== 'reindex'}
       />
     </section>
   )
@@ -564,11 +745,19 @@ function ChatPanel({
         4,
         (event) => {
           if (event.type === 'stage') {
-            setStage(
-              (event as { detail?: string }).detail ||
-                (event as { stage?: string }).stage ||
-                '',
-            )
+            const stageName = event.stage || ''
+            const detail = event.detail || stageName
+            setStage(detail)
+            if (stageName === 'rewrite_done' && detail) {
+              setMessages((prev) => {
+                const copy = [...prev]
+                const last = copy[copy.length - 1]
+                if (last?.role === 'assistant') {
+                  copy[copy.length - 1] = { ...last, rewriteQuery: detail }
+                }
+                return copy
+              })
+            }
           }
           if (event.type === 'citations' && event.citations) {
             const citations = event.citations
@@ -725,6 +914,9 @@ function ChatPanel({
                 {m.content ||
                   (streaming && idx === messages.length - 1 ? '正在生成…' : '')}
               </p>
+              {m.rewriteQuery ? (
+                <small className="rewrite-hint">检索改写：{m.rewriteQuery}</small>
+              ) : null}
               {m.citations && m.citations.length > 0 ? (
                 <div className="cites">
                   {m.citations.map((c, i) => (
@@ -762,6 +954,15 @@ function ChatPanel({
               关闭
             </button>
           </div>
+          <p className="cite-panel__meta">
+            文档 ID：{activeCitation.document_id}
+            {activeCitation.chunk_index != null
+              ? ` · 片段 #${activeCitation.chunk_index}`
+              : ''}
+            {activeCitation.score != null
+              ? ` · 相关度 ${activeCitation.score}`
+              : ''}
+          </p>
           <pre>{activeCitation.excerpt}</pre>
         </aside>
       ) : null}
@@ -787,10 +988,20 @@ function ChatPanel({
   )
 }
 
+function scoreEval(question: string, answer: string, citations: Citation[]) {
+  let score = 0
+  if (citations.length > 0) score += 40
+  if (answer.trim().length > 20) score += 30
+  const keys = question.replace(/[？?]/g, '').split(/\s+/).filter(Boolean)
+  const hit = keys.some((k) => answer.includes(k) || citations.some((c) => c.excerpt.includes(k)))
+  if (hit) score += 30
+  return score
+}
+
 function EvalPanel({ setStatus }: { setStatus: (v: string) => void }) {
   const [running, setRunning] = useState(false)
   const [rows, setRows] = useState<
-    { question: string; answer: string; citations: Citation[] }[]
+    { question: string; answer: string; citations: Citation[]; score: number }[]
   >([])
 
   async function runEval() {
@@ -798,8 +1009,12 @@ function EvalPanel({ setStatus }: { setStatus: (v: string) => void }) {
     setRows([])
     setStatus('评测开始…')
     try {
-      const next: { question: string; answer: string; citations: Citation[] }[] =
-        []
+      const next: {
+        question: string
+        answer: string
+        citations: Citation[]
+        score: number
+      }[] = []
       for (const question of EVAL_QUESTIONS) {
         let answer = ''
         let citations: Citation[] = []
@@ -817,10 +1032,14 @@ function EvalPanel({ setStatus }: { setStatus: (v: string) => void }) {
           undefined,
           'rag',
         )
-        next.push({ question, answer, citations })
+        const score = scoreEval(question, answer, citations)
+        next.push({ question, answer, citations, score })
         setRows([...next])
       }
-      setStatus(`评测完成：${next.length} 题`)
+      const avg = Math.round(
+        next.reduce((s, r) => s + r.score, 0) / Math.max(next.length, 1),
+      )
+      setStatus(`评测完成：${next.length} 题，平均分 ${avg}`)
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Eval failed')
     } finally {
@@ -855,9 +1074,118 @@ function EvalPanel({ setStatus }: { setStatus: (v: string) => void }) {
             <article key={row.question} className="eval-card">
               <h3>{row.question}</h3>
               <p>{row.answer || '（无回答）'}</p>
-              <small>{row.citations.length} 条引用</small>
+              <small>
+                {row.citations.length} 条引用 · 得分 {row.score}/100
+              </small>
             </article>
           ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function HealthPanel({ setStatus }: { setStatus: (v: string) => void }) {
+  const [detail, setDetail] = useState<HealthDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function refresh() {
+    setLoading(true)
+    try {
+      const next = await fetchHealthDetail()
+      setDetail(next)
+      setStatus(
+        next.status === 'ok' ? '健康检查通过' : `健康状态：${next.status}`,
+      )
+    } catch (err) {
+      setDetail(null)
+      setStatus(err instanceof Error ? err.message : '健康检查失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+  }, [])
+
+  return (
+    <section className="panel">
+      <div className="panel__head">
+        <div>
+          <h2>健康</h2>
+          <p>查看 Provider、向量库、文档与监视文件夹状态。</p>
+        </div>
+        <button
+          type="button"
+          className="btn btn--primary"
+          disabled={loading}
+          onClick={() => void refresh()}
+        >
+          {loading ? '刷新中…' : '刷新'}
+        </button>
+      </div>
+      {!detail ? (
+        <div className="empty">
+          <strong>暂无数据</strong>
+          <p>点击右上角刷新拉取状态。</p>
+        </div>
+      ) : (
+        <div className="health-grid">
+          <article className="health-card">
+            <h3>总体</h3>
+            <p className={detail.status === 'ok' ? 'ok' : 'bad'}>
+              {detail.status}
+            </p>
+          </article>
+          <article className="health-card">
+            <h3>Provider · {detail.provider.name}</h3>
+            <p className={detail.provider.ok ? 'ok' : 'bad'}>
+              {detail.provider.ok
+                ? '正常'
+                : detail.provider.error || '异常'}
+            </p>
+            <small>
+              chat {detail.provider.chat_model || '—'} · embed{' '}
+              {detail.provider.embedding_model || '—'}
+            </small>
+          </article>
+          <article className="health-card">
+            <h3>向量库</h3>
+            <p className={detail.vector_store.ok ? 'ok' : 'bad'}>
+              {detail.vector_store.ok
+                ? `${detail.vector_store.chunk_count} chunks`
+                : detail.vector_store.error || '异常'}
+            </p>
+          </article>
+          <article className="health-card">
+            <h3>文档</h3>
+            <p>
+              共 {detail.documents.total} · 就绪 {detail.documents.ready} ·
+              失败 {detail.documents.error}
+            </p>
+          </article>
+          <article className="health-card">
+            <h3>监视文件夹</h3>
+            <p>
+              {detail.watch.enabled
+                ? `开启 · ${detail.watch.path || '（未设路径）'}`
+                : '关闭'}
+            </p>
+            <small>
+              KB {detail.watch.kb_id || 'default'} · 每{' '}
+              {detail.watch.poll_seconds}s
+            </small>
+          </article>
+          <article className="health-card">
+            <h3>安全</h3>
+            <p>
+              Token {detail.security.api_token_required ? '已启用' : '未启用'}
+              {' · '}
+              设置锁定{' '}
+              {detail.security.settings_locked ? '是' : '否'}
+            </p>
+          </article>
         </div>
       )}
     </section>
@@ -868,20 +1196,36 @@ function SettingsPanel({
   settings,
   setSettings,
   setStatus,
+  kbs,
+  kbId,
+  onKbMeta,
 }: {
   settings: Settings | null
   setSettings: (s: Settings) => void
   setStatus: (v: string) => void
+  kbs: KnowledgeBase[]
+  kbId: string
+  onKbMeta: () => void
 }) {
+  const locked = Boolean(settings?.settings_locked)
   const [provider, setProvider] = useState<ProviderName>('mock')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [chatModel, setChatModel] = useState('')
   const [embeddingModel, setEmbeddingModel] = useState('')
+  const [clientToken, setClientToken] = useState(getApiToken())
   const [saving, setSaving] = useState(false)
   const [probing, setProbing] = useState(false)
   const [probe, setProbe] = useState<ProviderStatus | null>(null)
   const [shareUrl, setShareUrl] = useState('')
+  const [watch, setWatch] = useState<WatchConfig>({
+    enabled: false,
+    path: '',
+    kb_id: 'default',
+    poll_seconds: 5,
+  })
+  const [watchSaving, setWatchSaving] = useState(false)
+  const activeKb = kbs.find((k) => k.id === kbId)
 
   useEffect(() => {
     if (!settings) return
@@ -892,7 +1236,17 @@ function SettingsPanel({
     setApiKey('')
   }, [settings])
 
+  useEffect(() => {
+    void fetchWatchConfig()
+      .then(setWatch)
+      .catch(() => undefined)
+  }, [])
+
   async function onSave() {
+    if (locked) {
+      setStatus('设置已被环境变量锁定（RAGDESK_LOCK_SETTINGS）')
+      return
+    }
     setSaving(true)
     try {
       const next = await saveSettings({
@@ -919,13 +1273,15 @@ function SettingsPanel({
   async function onProbe() {
     setProbing(true)
     try {
-      await saveSettings({
-        provider,
-        base_url: baseUrl,
-        chat_model: chatModel,
-        embedding_model: embeddingModel,
-        ...(apiKey ? { api_key: apiKey } : {}),
-      })
+      if (!locked) {
+        await saveSettings({
+          provider,
+          base_url: baseUrl,
+          chat_model: chatModel,
+          embedding_model: embeddingModel,
+          ...(apiKey ? { api_key: apiKey } : {}),
+        })
+      }
       const status = await fetchProviderStatus()
       setProbe(status)
       setStatus(status.ok ? status.message : `连通失败：${status.message}`)
@@ -948,6 +1304,65 @@ function SettingsPanel({
     )
   }
 
+  async function onSaveWatch() {
+    setWatchSaving(true)
+    try {
+      const next = await saveWatchConfig(watch)
+      setWatch(next)
+      setStatus(
+        next.enabled
+          ? `已开启监视：${next.path || '（请填写路径）'}`
+          : '已关闭监视文件夹',
+      )
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : '监视配置保存失败')
+    } finally {
+      setWatchSaving(false)
+    }
+  }
+
+  async function onExportKb() {
+    try {
+      const blob = await exportKnowledgeBase(kbId)
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `ragdesk-kb-${kbId}.zip`
+      a.click()
+      URL.revokeObjectURL(a.href)
+      setStatus(`已导出知识库 ${kbId}`)
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : '导出失败')
+    }
+  }
+
+  async function onImportKb(file: File | null) {
+    if (!file) return
+    try {
+      const result = await importKnowledgeBase(file)
+      setStatus(
+        `已导入知识库：${result.kb.name}（${result.imported} 份文档）`,
+      )
+      onKbMeta()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : '导入失败')
+    }
+  }
+
+  async function onToggleReadonly() {
+    if (!activeKb) return
+    try {
+      await setKnowledgeBaseReadonly(kbId, !activeKb.readonly)
+      setStatus(
+        activeKb.readonly
+          ? `已取消只读：${activeKb.name}`
+          : `已设为只读：${activeKb.name}`,
+      )
+      onKbMeta()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : '更新只读失败')
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel__head">
@@ -955,6 +1370,7 @@ function SettingsPanel({
           <h2>设置</h2>
           <p>
             切换 Mock、OpenAI 兼容接口或 Ollama。密钥只保存在本机，不会上传。
+            {locked ? ' 当前由环境变量锁定，无法在此修改模型配置。' : ''}
           </p>
         </div>
         <div className="panel__actions">
@@ -976,7 +1392,7 @@ function SettingsPanel({
           <button
             type="button"
             className="btn btn--primary"
-            disabled={saving || !settings}
+            disabled={saving || !settings || locked}
             onClick={() => void onSave()}
           >
             {saving ? '保存中…' : '保存设置'}
@@ -998,13 +1414,56 @@ function SettingsPanel({
         </div>
       ) : null}
 
+      {settings?.api_token_required ? (
+        <div className="probe">
+          <strong>需要 API Token</strong>
+          <span>
+            服务端已设置 RAGDESK_API_TOKEN。请在下方填写并保存到本浏览器。
+          </span>
+        </div>
+      ) : null}
+
       <div className="form-grid">
+        <MantineTextInput
+          className="desk-field span-2"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label="客户端 API Token（Bearer）"
+          type="password"
+          value={clientToken}
+          onChange={(e) => setClientToken(e.currentTarget.value)}
+          placeholder="与 RAGDESK_API_TOKEN 一致"
+          autoComplete="off"
+          size="md"
+          rightSectionWidth={72}
+          rightSection={
+            <button
+              type="button"
+              className="btn btn--ghost"
+              style={{ height: '1.8rem', paddingInline: '0.5rem' }}
+              onClick={() => {
+                setApiToken(clientToken)
+                setStatus(
+                  clientToken.trim()
+                    ? '已保存客户端 Token'
+                    : '已清除客户端 Token',
+                )
+              }}
+            >
+              保存
+            </button>
+          }
+        />
         <div className="desk-field">
           <DeskSelect
             tone="light"
             label="Provider"
             aria-label="Provider"
             value={provider}
+            disabled={locked}
             data={[
               { value: 'mock', label: 'mock（本地演示）' },
               {
@@ -1025,6 +1484,7 @@ function SettingsPanel({
           }}
           label="Base URL"
           value={baseUrl}
+          disabled={locked}
           onChange={(e) => setBaseUrl(e.currentTarget.value)}
           placeholder={
             provider === 'ollama'
@@ -1043,6 +1503,7 @@ function SettingsPanel({
           label="Chat Model"
           list="chat-model-options"
           value={chatModel}
+          disabled={locked}
           onChange={(e) => setChatModel(e.currentTarget.value)}
           placeholder="gpt-4o-mini / llama3.2"
           size="md"
@@ -1062,6 +1523,7 @@ function SettingsPanel({
           label="Embedding Model"
           list="embed-model-options"
           value={embeddingModel}
+          disabled={locked}
           onChange={(e) => setEmbeddingModel(e.currentTarget.value)}
           placeholder="text-embedding-3-small / nomic-embed-text"
           size="md"
@@ -1085,11 +1547,123 @@ function SettingsPanel({
           }
           type="password"
           value={apiKey}
+          disabled={locked}
           onChange={(e) => setApiKey(e.currentTarget.value)}
           placeholder="sk-..."
           autoComplete="off"
           size="md"
         />
+      </div>
+
+      <div className="panel__subhead">
+        <h3>监视文件夹</h3>
+        <p>轮询本地目录，自动入库新增的 md/txt/pdf/docx/xlsx。</p>
+      </div>
+      <div className="form-grid">
+        <label className="check-row span-2">
+          <input
+            type="checkbox"
+            checked={watch.enabled}
+            onChange={(e) =>
+              setWatch((w) => ({ ...w, enabled: e.currentTarget.checked }))
+            }
+          />
+          启用监视
+        </label>
+        <MantineTextInput
+          className="desk-field span-2"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label="监视路径（服务端本机绝对路径）"
+          value={watch.path}
+          onChange={(e) =>
+            setWatch((w) => ({ ...w, path: e.currentTarget.value }))
+          }
+          placeholder="D:\\docs\\inbox"
+          size="md"
+        />
+        <div className="desk-field">
+          <DeskSelect
+            tone="light"
+            label="入库到知识库"
+            aria-label="监视知识库"
+            value={watch.kb_id || 'default'}
+            data={kbs.map((k) => ({
+              value: k.id,
+              label: k.readonly ? `${k.name}（只读）` : k.name,
+            }))}
+            onChange={(v) => setWatch((w) => ({ ...w, kb_id: v || 'default' }))}
+          />
+        </div>
+        <MantineTextInput
+          className="desk-field"
+          classNames={{
+            root: 'desk-field__root',
+            label: 'desk-field__label',
+            input: 'desk-field__input',
+          }}
+          label="轮询秒数"
+          type="number"
+          value={String(watch.poll_seconds)}
+          onChange={(e) =>
+            setWatch((w) => ({
+              ...w,
+              poll_seconds: Math.max(2, Number(e.currentTarget.value) || 5),
+            }))
+          }
+          size="md"
+        />
+        <div className="span-2">
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={watchSaving}
+            onClick={() => void onSaveWatch()}
+          >
+            {watchSaving ? '保存中…' : '保存监视配置'}
+          </button>
+        </div>
+      </div>
+
+      <div className="panel__subhead">
+        <h3>当前知识库</h3>
+        <p>
+          {activeKb
+            ? `${activeKb.name}${activeKb.readonly ? '（只读）' : ''}`
+            : kbId}
+        </p>
+      </div>
+      <div className="panel__actions" style={{ justifyContent: 'flex-start' }}>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => void onExportKb()}
+        >
+          导出 ZIP
+        </button>
+        <label className="btn btn--ghost">
+          导入 ZIP
+          <input
+            type="file"
+            accept=".zip,application/zip"
+            hidden
+            onChange={(e) => {
+              void onImportKb(e.currentTarget.files?.[0] || null)
+              e.currentTarget.value = ''
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          disabled={!activeKb}
+          onClick={() => void onToggleReadonly()}
+        >
+          {activeKb?.readonly ? '取消只读' : '设为只读'}
+        </button>
       </div>
     </section>
   )

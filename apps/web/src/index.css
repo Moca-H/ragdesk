@@ -788,8 +788,8 @@ select.field--light option,
 
 .doc-item {
   display: grid;
-  grid-template-columns: 8px 1fr auto;
-  gap: 0.85rem;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 0.65rem;
   align-items: center;
   padding: 0.85rem 0.85rem 0.85rem 0.7rem;
   border: 1px solid var(--rule);
@@ -911,6 +911,12 @@ select.field--light option,
   margin-bottom: 0.55rem;
 }
 
+.cite-panel__meta {
+  margin: 0 0 0.55rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .cite-panel pre {
   margin: 0;
   white-space: pre-wrap;
@@ -918,6 +924,92 @@ select.field--light option,
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
   font-size: 0.95rem;
   line-height: 1.7;
+}
+
+.rewrite-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.health-card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.95rem 1rem;
+  background: #fffdf8;
+}
+
+.health-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.health-card p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.health-card small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+}
+
+.health-card .ok {
+  color: #2f6b45;
+}
+
+.health-card .bad {
+  color: #8a3b2d;
+}
+
+.panel__subhead {
+  margin: 1.4rem 0 0.75rem;
+}
+
+.panel__subhead h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.panel__subhead p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.doc-item__check {
+  display: flex;
+  align-items: center;
+  padding-left: 0.15rem;
+}
+
+.desk-textarea {
+  width: 100%;
+  min-height: 12rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: #fffdf8;
+  color: var(--ink);
+  padding: 0.75rem 0.85rem;
+  font: inherit;
+  line-height: 1.55;
+  resize: vertical;
 }
 
 .share-shell .stage {
@@ -1019,7 +1111,8 @@ select.field--light option,
   }
 
   .form-grid,
-  .composer {
+  .composer,
+  .health-grid {
     grid-template-columns: 1fr;
   }
 }

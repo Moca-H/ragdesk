@@ -49,6 +49,10 @@ def get_settings() -> dict:
 
 
 def update_settings(patch: SettingsUpdate) -> dict:
+    from app.services.auth import settings_locked
+
+    if settings_locked():
+        raise PermissionError("设置已由服务端环境变量锁定，无法在界面修改")
     data = get_settings()
     payload = patch.model_dump(exclude_unset=True)
     for key, value in payload.items():
@@ -75,6 +79,8 @@ def _has_documents() -> bool:
 
 
 def to_public(data: dict | None = None) -> SettingsPublic:
+    from app.services.auth import configured_token, settings_locked
+
     raw = data or get_settings()
     return SettingsPublic(
         provider=raw["provider"],
@@ -83,4 +89,6 @@ def to_public(data: dict | None = None) -> SettingsPublic:
         embedding_model=raw.get("embedding_model") or "",
         api_key_set=bool(raw.get("api_key")),
         has_documents=_has_documents(),
+        settings_locked=settings_locked(),
+        api_token_required=bool(configured_token()),
     )
