@@ -46,6 +46,18 @@ npm run dev:api
 npm run dev:web
 ```
 
+### Docker 一键
+
+需要本机已安装 Docker Desktop：
+
+```bash
+docker compose up --build
+```
+
+浏览器打开 http://127.0.0.1:8080  
+
+数据持久化在 Docker volume `ragdesk-data`。
+
 ## 切换真实模型
 
 在「设置」页：
