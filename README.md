@@ -153,4 +153,4 @@ MIT
 
 ## English
 
-Self-hosted RAG desk with multi knowledge bases, hybrid retrieval, agent rewrite mode, provider probing, eval panel, and one-click local/Docker startup.
+Self-hosted RAG desk with multi knowledge bases, hybrid retrieval, agent rewrite mode, provider probing, eval panel, one-click local/Docker startup, and optional MCP (`ragdesk-mcp`) for Cursor / Claude Desktop / DeepSeek Harness. See `apps/mcp/README.md`.
