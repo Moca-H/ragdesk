@@ -24,7 +24,7 @@
 - API Token（`RAGDESK_API_TOKEN`）与环境变量锁定设置（`RAGDESK_LOCK_SETTINGS`）
 - Provider 连通检测、健康面板、评测打分
 - CLI / 系统托盘快捷提问（可选）
-- Windows 一键启动 / Docker Compose
+- Windows 一键启动 / 便携包分发 / Docker Compose
 
 ## 快速开始（Windows 一键）
 
@@ -42,9 +42,20 @@ npm run dev
 
 默认 Provider 为 **mock**，无需 Key。
 
+### 发给同事：Windows 便携包
+
+```powershell
+npm run build:release
+```
+
+得到 `release/ragdesk-portable.zip`。对方解压后双击 `start.cmd`（需本机 Python 3.11+），打开 http://127.0.0.1:8000 。
+
+内网部署、Token、防火墙与 Docker 细节见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
+
 ### Docker
 
 ```bash
+cp .env.example .env   # 按需修改
 docker compose up --build
 ```
 
@@ -170,8 +181,11 @@ apps/
   mcp/   MCP server（PyPI: ragdesk-mcp）
   cli/   命令行 ask / ingest / health
   tray/  轻量系统托盘快捷提问
-scripts/dev.ps1
+docs/DEPLOY.md          内网部署说明
+scripts/build-release.ps1
+scripts/release/        便携包启动脚本模板
 docker-compose.yml
+.env.example
 ```
 
 ## License
@@ -182,4 +196,4 @@ MIT
 
 ## English
 
-Self-hosted RAG desk with multi knowledge bases (export/import, readonly), folder watch, paste/URL ingest, API token + locked settings, hybrid retrieval, agent rewrite display, health/eval panels, CLI/tray helpers, one-click local/Docker startup, and optional MCP (`ragdesk-mcp`). See `apps/mcp/README.md`.
+Self-hosted RAG desk with multi knowledge bases (export/import, readonly), folder watch, paste/URL ingest, API token + locked settings, hybrid retrieval, agent rewrite display, health/eval panels, CLI/tray helpers, Windows portable zip + Docker intranet deploy (`docs/DEPLOY.md`), and optional MCP (`ragdesk-mcp`). See `apps/mcp/README.md`.
