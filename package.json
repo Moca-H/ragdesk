@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
     "dev:api": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-api.ps1",
-    "dev:web": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-web.ps1"
+    "dev:web": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-web.ps1",
+    "build:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-release.ps1"
   }
 }
